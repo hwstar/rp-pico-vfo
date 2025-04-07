@@ -48,16 +48,15 @@ void EncoderSwitch::tick() {
 
         switch(this->_knob_state) {
             case ENCODER_KNOB_STATE_UP:
-                if(current_knob_switch_state != this->_previous_knob_switch_state) {
+                if((current_knob_switch_state != this->_previous_knob_switch_state) && (current_knob_switch_state == true) ) {
                     this->_knob_switch_timer = 0;
                     this->_previous_knob_switch_state = current_knob_switch_state;
                     this->_knob_state = ENCODER_KNOB_STATE_DOWN;
-
                 }
                 break;
 
             case ENCODER_KNOB_STATE_DOWN:
-                if(current_knob_switch_state != this->_previous_knob_switch_state) {
+                if((current_knob_switch_state != this->_previous_knob_switch_state) && (current_knob_switch_state == false)) {
                     if(this->_knob_switch_timer >= 1000) {/* > 2 seconds? */
                         if(this->_callback) {
                             this->_callback(ENCODER_KNOB_SWITCH_PRESSED_LONG);
@@ -65,9 +64,10 @@ void EncoderSwitch::tick() {
                         else {
                             this->_callback(ENCODER_KNOB_SWITCH_PRESSED_SHORT);
                         }
+                        this->_knob_state = ENCODER_KNOB_STATE_UP;
+
                     }
                 }
-
                 break;
 
             default:
