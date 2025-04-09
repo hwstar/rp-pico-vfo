@@ -18,9 +18,8 @@ Ticker ticker(two_mS, 2, 0, MILLIS);
 Display display;
 Pll pll;
 EncoderSwitch encoder;
-MbedI2C I2C_int(p12, p13);
-MbedI2C I2C_ext(p10, p11);
-
+MbedI2C I2C_int(12, 13); /* Must be GPxx as a number */
+MbedI2C I2C_ext(10, 11);
 
 
 /* Variables */
@@ -33,15 +32,16 @@ void setup() {
     /* Initialize I2C */
     I2C_int.begin(); /* Internal bus with SI5351 */
     I2C_ext.begin(); /* External I2C bus */
+    
+   
+
 
     /* Initialize USB Serial */
     Serial.begin(115200);
     /* Initialize debug port */
     Serial1.begin(115200);
-    Serial1.println("A test to see if the serial port works");
     /* Initialize encoder */
     encoder.begin(GPIO_ENCODER_I, GPIO_ENCODER_Q, GPIO_ENCODER_SWITCH, encoder_callback);
-
     /* Initialize display*/
     display.begin();
     /* Turn on backlight */
@@ -72,10 +72,10 @@ void loop() {
     /*
     static uint32_t previous_gpios = 0xFFFFFFFF;
     */
-
     /* Update ticker */
     ticker.update();
     display.update();
+
     /*
     uint32_t current_gpios = read_gpios();
     if(current_gpios != previous_gpios) {

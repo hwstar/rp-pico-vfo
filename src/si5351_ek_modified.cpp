@@ -33,9 +33,10 @@
 /* Public functions */
 /********************/
 
-Si5351::Si5351(uint8_t i2c_addr):
+Si5351::Si5351(MbedI2C *i2c_bus, uint8_t i2c_addr):
 	i2c_bus_addr(i2c_addr)
 {
+	this->_i2c_bus = i2c_bus;
 	xtal_freq[0] = SI5351_XTAL_FREQ;
 
 	// Start by using XO ref osc as default for each PLL
@@ -63,12 +64,13 @@ Si5351::Si5351(uint8_t i2c_addr):
 bool Si5351::init(uint8_t xtal_load_c, uint32_t xo_freq, int32_t corr)
 {
 	// Start I2C comms
-	Wire.begin();
+	//Wire.begin();
+	
 
 	// Check for a device on the bus, bail out if it is not there
-	Wire.beginTransmission(i2c_bus_addr);
+	this->_i2c_bus->beginTransmission(i2c_bus_addr);
 	uint8_t reg_val;
-  reg_val = Wire.endTransmission();
+  	reg_val = this->_i2c_bus->endTransmission();
 
 	if(reg_val == 0)
 	{
@@ -1312,37 +1314,37 @@ void Si5351::set_ref_freq(uint32_t ref_freq, enum si5351_pll_input ref_osc)
 
 uint8_t Si5351::si5351_write_bulk(uint8_t addr, uint8_t bytes, uint8_t *data)
 {
-	Wire.beginTransmission(i2c_bus_addr);
-	Wire.write(addr);
+	this->_i2c_bus->beginTransmission(i2c_bus_addr);
+	this->_i2c_bus->write(addr);
 	for(int i = 0; i < bytes; i++)
 	{
-		Wire.write(data[i]);
+		this->_i2c_bus->write(data[i]);
 	}
-	return Wire.endTransmission();
+	return this->_i2c_bus->endTransmission();
 
 }
 
 uint8_t Si5351::si5351_write(uint8_t addr, uint8_t data)
 {
-	Wire.beginTransmission(i2c_bus_addr);
-	Wire.write(addr);
-	Wire.write(data);
-	return Wire.endTransmission();
+	this->_i2c_bus->beginTransmission(i2c_bus_addr);
+	this->_i2c_bus->write(addr);
+	this->_i2c_bus->write(data);
+	return this->_i2c_bus->endTransmission();
 }
 
 uint8_t Si5351::si5351_read(uint8_t addr)
 {
 	uint8_t reg_val = 0;
 
-	Wire.beginTransmission(i2c_bus_addr);
-	Wire.write(addr);
-	Wire.endTransmission();
+	this->_i2c_bus->beginTransmission(i2c_bus_addr);
+	this->_i2c_bus->write(addr);
+	this->_i2c_bus->endTransmission();
 
-	Wire.requestFrom(i2c_bus_addr, (uint8_t)1);
+	this->_i2c_bus->requestFrom(i2c_bus_addr, (uint8_t)1);
 
-	while(Wire.available())
+	while(this->_i2c_bus->available())
 	{
-		reg_val = Wire.read();
+		reg_val = this->_i2c_bus->read();
 	}
 
 	return reg_val;
