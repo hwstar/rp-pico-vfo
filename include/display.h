@@ -26,22 +26,28 @@ class Display {
     void set_current_view(uint8_t new_view);
 
     /*
-    * Update frequency portion of display
+    * Update frequency portion on display
     */
 
-    void update_freq(char *freq);
+    void update_freq(uint32_t hz);
 
     /*
-    * Update transmit status portion of display
+    * Update transmit status portion on display
     */
 
     void update_tx(bool tx);
 
     /*
-    * Update status portion of display
+    * Update sideband on display
     */
 
-    void update_status_text(char *textL);
+    void update_sideband(bool sideband);
+
+    /*
+    * Update AGC on display
+    */
+
+    void update_agc(bool agc);
 
     /*
     * Clear a display view

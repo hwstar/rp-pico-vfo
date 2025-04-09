@@ -29,12 +29,6 @@
 #define GPIO_ANALOG_VMON p28
 #define GPIO_ANALOG_SMETER p26
 
-/* I2C */
-
-#define GPIO_I2C_SDA1 p10
-#define GPIO_I2C_SCL1 p11
-#define GPIO_I2C_SDA0 p12
-#define GPIO_I2C_SCL0 p13
 
 /* UART */
 
