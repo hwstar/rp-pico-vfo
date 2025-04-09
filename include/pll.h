@@ -7,13 +7,17 @@ class Pll {
     void set_freq(unsigned freq);
     void set_tx_state(bool state);
     void set_usb_mode(bool mode);
+    void set_cal_mode();
+    void clear_cal_mode();
 
     protected:
+    void _set_freq_hz(uint32_t freq_hz, enum si5351_clock output);
     void _set_clock_freqs();
 
  
     bool _tx_state;
     bool _usb_mode;
+    bool _cal_mode;
     int32_t _correction;
     uint32_t _cf_zero_hz_freq;
     uint32_t _ref_freq;
