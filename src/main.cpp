@@ -47,7 +47,7 @@ void setup() {
     /* Turn on backlight */
     display.set_backlight(true);
     /* Initialize PLL */
-    //pll.begin(26000000, 12287407, 7150000, 0);
+    pll.begin(&I2C_int, 26000000, 12287407, 7150000, 0);
     
 
 }
