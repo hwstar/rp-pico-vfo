@@ -79,10 +79,24 @@ void Display::clear_view(uint8_t view) {
     DisplayChars *vp = &this->_views[view];
     for(uint8_t line = 0; line < DISPLAY_MAX_LINES; line++) {
         memset(vp->lines[line], 0x20, DISPLAY_MAX_LINE_LENGTH);
+        /* Zero terminate last position in buffer */
+        vp->lines[line][DISPLAY_MAX_LINE_LENGTH] = 0;
     }
     /* Signal that this view needs to be sent to the display */
     vp->dirty = true;
 
+}
+
+void Display::print_text(const char *str, uint8_t row, uint8_t col) {
+    DisplayChars *vp = &this->_views[this->_current_view];
+    int len = strlen(str);
+    if((col >= DISPLAY_MAX_LINES) || (row >= DISPLAY_MAX_LINE_LENGTH )) {
+        return; /* Out of bounds */
+    }
+    if((row + len) > DISPLAY_MAX_LINE_LENGTH) {
+        return; /* Out of bounds */
+    }
+    memcpy(vp->lines[row]+col, str, len);
 }
 
 void Display::set_backlight(bool state) {
@@ -94,7 +108,11 @@ void Display::update() {
     DisplayChars *vp = &this->_views[this->_current_view];
 
     if(vp->dirty) {
-        /* TODO: Write lines from view to physical display */
+        /* Write lines from view to physical display */
+        lcd_display.setCursor(0,0);
+        lcd_display.print(vp->lines[0]);
+        lcd_display.setCursor(0,1);
+        lcd_display.print(vp->lines[1]);
 
         vp->dirty = false;
     }

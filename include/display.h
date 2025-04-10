@@ -11,7 +11,8 @@ enum {VIEW_NORMAL=0, VIEW_MENU=1, VIEW_SPECIAL=2, VIEW_ERROR=3};
 typedef struct displaychars {
     bool dirty;
     /* Memory for 16x2 display */
-    char lines[DISPLAY_MAX_LINES][DISPLAY_MAX_LINE_LENGTH]; 
+    /* Note: One extra byte added to accomodate zero terminated strings */
+    char lines[DISPLAY_MAX_LINES][DISPLAY_MAX_LINE_LENGTH + 1]; 
 
 
 } DisplayChars;
@@ -54,6 +55,12 @@ class Display {
     */
 
     void clear_view(uint8_t view);
+
+    /*
+    * Print text to the current view
+    */
+
+    void print_text(const char *str, uint8_t row, uint8_t col);
 
     /* Set the display backlight state */
 

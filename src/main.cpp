@@ -48,6 +48,14 @@ void setup() {
     display.set_backlight(true);
     /* Initialize PLL */
     pll.begin(&I2C_int, 26000000, 12287407, 7150000, 0);
+
+    /* Initialize control */
+    //control.begin(&display, &pll)
+
+    /* Boot up banner */
+    display.set_current_view(VIEW_SPECIAL);
+    display.print_text("40 METER XVCR", 0, 0);
+    display.print_text("V 0.0 WA6ZFT", 1, 0);
     
 
 }
@@ -94,20 +102,20 @@ void loop() {
 
 /* This gets called every 2 milliseconds on average */
 void two_mS() {
-    encoder.tick();
     ms_ticks++;
+    //control.tick();
+    encoder.tick();
+    if(ms_ticks == 2500){ /* Boot up banner displays for 5 seconds*/
+        display.clear_view(VIEW_SPECIAL);
+        /* Switch to normal view */
+        display.set_current_view(VIEW_NORMAL);
+        //control.release()
+    }
+
 }
 
 
 /* This callback is called whenever the state of the encoder knob changes */
 void encoder_callback(uint8_t event) {
-    if(event == ENCODER_SWITCH_FORWARD)
-        Serial1.println("Forward");
-    if(event == ENCODER_SWITCH_REVERSE)
-        Serial1.println("Reverse");
-    if(event == ENCODER_KNOB_SWITCH_PRESSED_SHORT)
-        Serial1.println("Release after short press");
-    if(event == ENCODER_KNOB_SWITCH_PRESSED_LONG)
-        Serial1.println("Release after long press");
-
+    //control.encoder_event(event)
 }

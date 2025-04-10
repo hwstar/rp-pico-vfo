@@ -33,16 +33,6 @@ bool Pll::begin(MbedI2C *i2c_bus, uint32_t ref_freq, uint32_t cf_zero_hz_freq, u
     this->_si5351->output_enable(SI5351_CLK0, 1);
     this->_si5351->output_enable(SI5351_CLK2, 1);
 
-
-
-
-
-
-
-
-    this->set_cal_mode(); // DEBUG
-
-
     /* Set intial clock frequencies */
     this->_set_clock_freqs();
     return false;
