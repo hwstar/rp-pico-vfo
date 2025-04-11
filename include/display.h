@@ -57,10 +57,9 @@ class Display {
     void clear_view(uint8_t view);
 
     /*
-    * Print text to the current view
+    * Printf to the current view
     */
-
-    void print_text(const char *str, uint8_t row, uint8_t col);
+    void printf(uint8_t row, uint8_t col, const char *format, ...);
 
     /* Set the display backlight state */
 

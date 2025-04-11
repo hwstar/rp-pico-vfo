@@ -43,13 +43,12 @@ void Pll::set_freq(unsigned freq) {
     this->_set_clock_freqs();
 }
 
-void Pll::set_cal_mode(void) {
-    this->_cal_mode = true;
-    this->_set_clock_freqs();
+uint32_t Pll::get_freq() {
+    return this->_tune_freq;
 }
 
-void Pll::clear_cal_mode(void) {
-    this->_cal_mode = false;
+void Pll::cal_mode(bool mode) {
+    this->_cal_mode = mode;
     this->_set_clock_freqs();
 }
 

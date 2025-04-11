@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <LiquidCrystal.h>
+#include <stdarg.h>
 #include "gpio.h"
 #include "display.h"
 
@@ -87,17 +88,23 @@ void Display::clear_view(uint8_t view) {
 
 }
 
-void Display::print_text(const char *str, uint8_t row, uint8_t col) {
+
+void Display::printf(uint8_t row, uint8_t col, const char *format, ...) {
+    va_list args; 
+    va_start(args, format); 
     DisplayChars *vp = &this->_views[this->_current_view];
-    int len = strlen(str);
+    
     if((col >= DISPLAY_MAX_LINES) || (row >= DISPLAY_MAX_LINE_LENGTH )) {
         return; /* Out of bounds */
     }
-    if((row + len) > DISPLAY_MAX_LINE_LENGTH) {
-        return; /* Out of bounds */
-    }
-    memcpy(vp->lines[row]+col, str, len);
+   
+    char *line_buffer_pos = vp->lines[row] + col;
+    uint8_t window_size = DISPLAY_MAX_LINE_LENGTH - col;
+
+    vsnprintf(line_buffer_pos, window_size, format, args);
+    vp->dirty = true;
 }
+
 
 void Display::set_backlight(bool state) {
     digitalWrite(GPIO_LCD_BACKLIGHT, state);
