@@ -5,6 +5,7 @@
 #include "EncoderSwitch.h"
 #include "display.h"
 #include "pll.h"
+#include "control.h"
 
 
 /* Forward declarations */
@@ -17,6 +18,7 @@ void encoder_callback(uint8_t event);
 Ticker ticker(two_mS, 2, 0, MILLIS);
 Display display;
 Pll pll;
+Control control;
 EncoderSwitch encoder;
 MbedI2C I2C_int(12, 13); /* Must be GPxx as a number */
 MbedI2C I2C_ext(10, 11);
@@ -50,7 +52,7 @@ void setup() {
     pll.begin(&I2C_int, 26000000, 12287407, 7150000, 0);
 
     /* Initialize control */
-    //control.begin(&display, &pll)
+    control.begin(&display, &pll);
 
     /* Boot up banner */
     display.set_current_view(VIEW_SPECIAL);
@@ -103,13 +105,13 @@ void loop() {
 /* This gets called every 2 milliseconds on average */
 void two_mS() {
     ms_ticks++;
-    //control.tick();
+    control.tick();
     encoder.tick();
     if(ms_ticks == 2500){ /* Boot up banner displays for 5 seconds*/
         display.clear_view(VIEW_SPECIAL);
         /* Switch to normal view */
         display.set_current_view(VIEW_NORMAL);
-        //control.release()
+        control.release();
     }
 
 }
@@ -117,5 +119,5 @@ void two_mS() {
 
 /* This callback is called whenever the state of the encoder knob changes */
 void encoder_callback(uint8_t event) {
-    //control.encoder_event(event)
+    control.encoder_event(event);
 }

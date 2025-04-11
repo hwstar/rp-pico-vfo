@@ -68,7 +68,6 @@ void Pll::_set_freq_hz(uint32_t freq_hz, enum si5351_clock output) {
     this->_si5351->set_freq(freq, output);
 }
 
-
 void Pll::_set_clock_freqs() {
     if(this->_cal_mode) {
         uint32_t freq = 10000000;
