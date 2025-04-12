@@ -4,6 +4,19 @@
 #include "EncoderSwitch.h"
 #include "display.h"
 #include "pll.h"
+#include "config_default.h"
+
+#define MAX_NUM_OF_BANDS 8
+#define BAND_TABLE_NAME_SIZE 8
+
+typedef struct band_table {
+    char name[BAND_TABLE_NAME_SIZE];
+    uint32_t lower_limit;
+    uint32_t upper_limit;
+    uint32_t tune_freq_hz;
+    bool sideband;
+
+} band_table;
 
 class Control {
     public:
@@ -17,14 +30,17 @@ class Control {
     bool _tune_or_ptt();
     void _every_ms10();
     void _handle_normal_view(uint8_t event);
-    uint16_t _step_size;
-    uint32_t _tune_freq_hz;
+
+    
+    band_table _band_table[MAX_NUM_OF_BANDS];
+    const uint16_t _step_size_table[5] = {10, 100, 500, 1000, 10000};
     uint16_t _tx_timer;
     uint8_t _tx_state;
+    uint8_t _current_band;
+    uint8_t _step_size_index;
     bool _released;
     bool _is_transmitting;
     bool _tune_mode;
-    bool _sideband;
     bool _agc_enabled;
 
     Display *_display;

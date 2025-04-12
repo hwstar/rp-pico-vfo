@@ -53,6 +53,12 @@ class Display {
     void update_agc(bool agc);
 
     /*
+    * Update tune step size
+    */
+
+    void update_tune_step_size(uint16_t step_size);
+
+    /*
     * Clear a display view
     */
 

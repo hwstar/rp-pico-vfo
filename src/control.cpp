@@ -4,6 +4,7 @@
 
 enum {TX_IDLE=0, TX_MUTE_WAIT, TX_PTT, TX_UNMUTE_WAIT};
 
+
 void Control::begin(Display *display, Pll *pll) {
     this->_display = display;
     this->_pll = pll;
@@ -26,10 +27,22 @@ void Control::begin(Display *display, Pll *pll) {
     pinMode(GPIO_AGC_DISABLE, OUTPUT);
     digitalWrite(GPIO_AGC_DISABLE, false);
 
-    this->_agc_enabled = true;
-    this->_tune_freq_hz = CONFIG_DEFAULT_TUNE_FREQ;
-    this->_step_size = CONFIG_DEFAULT_STEP_SIZE;
+     /* Initialize defaults */
 
+    this->_agc_enabled = true;
+    this->_step_size_index = CONFIG_DEFAULT_STEP_SIZE_INDEX;
+    this->_current_band = CONFIG_DEFAULT_INITIAL_BAND_INDEX;
+
+    /* Initialize band table */
+    #ifdef CONFIG_DEFAULT_BAND_NAME_0
+    strncpy(this->_band_table[0].name, CONFIG_DEFAULT_BAND_NAME_0, BAND_TABLE_NAME_SIZE);
+    this->_band_table[0].lower_limit = CONFIG_DEFAULT_BAND_LOWER_LIMIT_HZ_0;
+    this->_band_table[0].upper_limit = CONFIG_DEFAULT_BAND_UPPER_LIMIT_HZ_0;
+    this->_band_table[0].tune_freq_hz = CONFIG_DEFAULT_BAND_INITIAL_FREQUENCY_0;
+    this->_band_table[0].sideband = CONFIG_DEFAULT_BAND_SIDEBAND_0;
+
+    #endif
+   
 }
 
 
@@ -49,10 +62,10 @@ void Control::tick() {
 
 
 void Control::release() {
-    this->_pll->set_freq(this->_tune_freq_hz);
-    this->_display->update_freq(this->_tune_freq_hz);
+    this->_pll->set_freq(this->_band_table[this->_current_band].tune_freq_hz);
+    this->_display->update_freq(this->_band_table[this->_current_band].tune_freq_hz);
     this->_display->update_tx(this->_is_transmitting, this->_tune_mode);
-    this->_display->update_sideband(this->_sideband);
+    this->_display->update_sideband(this->_band_table[this->_current_band].sideband);
     this->_display->update_agc(this->_agc_enabled);
     this->_released = true;
    
@@ -150,20 +163,29 @@ bool Control::_tune_or_ptt() {
 
 
 void Control::_handle_normal_view(uint8_t event) {
+    uint16_t step_size = this->_step_size_table[this->_step_size_index];
+    band_table *current_band = &this->_band_table[this->_current_band];
     switch(event) {
+       
         case ENCODER_SWITCH_FORWARD:
-            this->_tune_freq_hz += this->_step_size;
-            this->_display->update_freq(this->_tune_freq_hz);
-            this->_pll->set_freq(this->_tune_freq_hz);
+            /* Test band upper limit */
+            if(current_band->tune_freq_hz + step_size <= current_band->upper_limit) {
+                /* Will still be in band, so increase tune freq by the step size and update everything */
+                current_band->tune_freq_hz += step_size;
+                this->_display->update_freq(current_band->tune_freq_hz);
+                this->_pll->set_freq(current_band->tune_freq_hz);
+            }
 
             break;
 
         case ENCODER_SWITCH_REVERSE:
-            this->_tune_freq_hz -= this->_step_size;
-            this->_display->update_freq(this->_tune_freq_hz);
-            this->_pll->set_freq(this->_tune_freq_hz);
-
-
+            /* Test band lower limit */
+            if(current_band->tune_freq_hz - step_size >= current_band->lower_limit) {
+                /* Will still be in band, so decrease tune freq by the step size and update everything */
+                current_band->tune_freq_hz -= step_size;
+                this->_display->update_freq(current_band->tune_freq_hz);
+                this->_pll->set_freq(current_band->tune_freq_hz);
+            }
             break;
 
         default:

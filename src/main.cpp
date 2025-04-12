@@ -51,7 +51,7 @@ void setup() {
     display.set_backlight(true);
     /* Initialize PLL */
     /* See config_default.h for constants */
-    pll.begin(&I2C_int, CONFIG_DEFAULT_REF_CLK_FREQ, CONFIG_DEFAULT_IF_ZERO_HZ_FREQ, CONFIG_DEFAULT_TUNE_FREQ, CONFIG_DEFAULT_REF_CLK_CAL);
+    pll.begin(&I2C_int, CONFIG_DEFAULT_REF_CLK_FREQ, CONFIG_DEFAULT_IF_ZERO_HZ_FREQ, 10000000, CONFIG_DEFAULT_REF_CLK_CAL);
     /* pll.cal_mode(true); */
 
     /* Initialize control */

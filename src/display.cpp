@@ -24,6 +24,12 @@
 #define AGC_OFFSET 10
 #define AGC_LEN 3
 
+// Tuning step size
+#define TUNE_STEP_LINE 1
+#define TUNE_STEP_OFFSET 13
+#define TUNE_STEP_LEN 3
+
+
 LiquidCrystal lcd_display(GPIO_LCD_RS, GPIO_LCD_E, GPIO_LCD_DB4, GPIO_LCD_DB5, GPIO_LCD_DB6, GPIO_LCD_DB7);
 
 void Display::begin() {
@@ -83,6 +89,23 @@ void Display::update_agc(bool agc){
     DisplayChars *vp = &this->_views[VIEW_NORMAL];
     memcpy(vp->lines[AGC_LINE] + AGC_OFFSET, agc ? "AGC" : "   ", AGC_LEN);
     vp->dirty = true;
+
+}
+
+
+void Display::update_tune_step_size(uint16_t step_size) {
+    DisplayChars *vp = &this->_views[VIEW_NORMAL];
+    switch(step_size) {
+        case 10:
+        case 100:
+        case 500:
+            //this->printf(vp = &this->_views[VIEW_NORMAL], step_size);
+            break;
+
+        case 1000:
+            //this->printf(DisplayChars *vp = &this->_views[VIEW_NORMAL], "%3s", "1K");
+            break;
+    }
 
 }
 
