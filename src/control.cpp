@@ -1,5 +1,6 @@
 #include "control.h"
 #include "gpio.h"
+#include "config_default.h"
 
 enum {TX_IDLE=0, TX_MUTE_WAIT, TX_PTT, TX_UNMUTE_WAIT};
 
@@ -25,6 +26,8 @@ void Control::begin(Display *display, Pll *pll) {
     pinMode(GPIO_AGC_DISABLE, OUTPUT);
     digitalWrite(GPIO_AGC_DISABLE, false);
 
+    this->_tune_freq_hz = CONFIG_DEFAULT_TUNE_FREQ;
+
 }
 
 
@@ -44,7 +47,9 @@ void Control::tick() {
 
 
 void Control::release() {
+    this->_pll->set_freq(this->_tune_freq_hz);
     this->_released = true;
+   
 }
 
 void Control::encoder_event(uint8_t event) {

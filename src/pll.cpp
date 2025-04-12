@@ -68,10 +68,85 @@ void Pll::_set_freq_hz(uint32_t freq_hz, enum si5351_clock output) {
 }
 
 void Pll::_set_clock_freqs() {
+
+    /*
+    * Calibration mode
+    */
+
     if(this->_cal_mode) {
         uint32_t freq = 10000000;
         this->_set_freq_hz(freq, SI5351_CLK0);
         this->_set_freq_hz(freq, SI5351_CLK2);
+    }
+
+    /*
+    * Normal operation 
+    */    
+
+    else {
+        uint32_t lo_first, lo_second;
+        if(this->_tx_state) {
+
+            /*
+            * Transmit
+            * First lo is the balanced modulator, 
+            * Second lo is the transmit mixer to convert the IF to the desired TX frequency
+            */
+
+            lo_first = this->_cf_zero_hz_freq;
+            if(this->_usb_mode) {
+
+                /*
+                * High side injection (inverts sideband)
+                */
+
+                lo_second = this->_tune_freq + this->_cf_zero_hz_freq;
+
+            }
+            else {
+
+                /* 
+                * Low side injection
+                */
+
+                lo_second = this->_cf_zero_hz_freq - this->_tune_freq;
+            }
+        }
+        else {
+
+            /*
+            * Receive
+            * First LO is used to convert the receive RF from the desired frequency to the IF frequency
+            * Second LO is the product detector.
+            */
+
+            lo_second = this->_cf_zero_hz_freq;
+            if(this->_usb_mode) {
+
+                /*
+                * High side injection (inverts sideband)
+                */
+
+                lo_first = this->_tune_freq + this->_cf_zero_hz_freq;
+            }
+            else {
+
+                /* 
+                * Low side injection
+                */
+
+               lo_first = this->_cf_zero_hz_freq - this->_tune_freq;
+            }
+        }
+        
+        /*
+        * Set the local oscillator frequencies in the Si5351
+        */
+
+        this->_set_freq_hz(lo_first, SI5351_CLK0);
+        this->_set_freq_hz(lo_second, SI5351_CLK2);
+        
+
     }
 
 

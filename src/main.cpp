@@ -6,6 +6,7 @@
 #include "display.h"
 #include "pll.h"
 #include "control.h"
+#include "config_default.h"
 
 
 /* Forward declarations */
@@ -20,8 +21,8 @@ Display display;
 Pll pll;
 Control control;
 EncoderSwitch encoder;
-MbedI2C I2C_int(12, 13); /* Must be GPxx as a number */
-MbedI2C I2C_ext(10, 11);
+MbedI2C I2C_int(12, 13); /* Must be GPxx as a number predefined arduino pins do not work! */
+MbedI2C I2C_ext(10, 11); /* Must be GPxx as a number predefined arduino pins do not work! */
 
 
 /* Variables */
@@ -49,7 +50,9 @@ void setup() {
     /* Turn on backlight */
     display.set_backlight(true);
     /* Initialize PLL */
-    pll.begin(&I2C_int, 26000000, 12287407, 7150000, 0);
+    /* See config_default.h for constants */
+    pll.begin(&I2C_int, CONFIG_DEFAULT_REF_CLK_FREQ, CONFIG_DEFAULT_IF_ZERO_HZ_FREQ, CONFIG_DEFAULT_TUNE_FREQ, CONFIG_DEFAULT_REF_CLK_CAL);
+    /* pll.cal_mode(true); */
 
     /* Initialize control */
     control.begin(&display, &pll);
@@ -118,6 +121,7 @@ void two_mS() {
 
 
 /* This callback is called whenever the state of the encoder knob changes */
+/* Knob events are passed to control for processing */
 void encoder_callback(uint8_t event) {
     control.encoder_event(event);
 }
