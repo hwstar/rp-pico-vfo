@@ -42,6 +42,10 @@ void  Display::set_current_view(uint8_t new_view) {
 
 }
 
+uint8_t Display::get_current_view() {
+    return this->_current_view;
+}
+
 void Display::update_freq(uint32_t hz){
 
     char freq[12];

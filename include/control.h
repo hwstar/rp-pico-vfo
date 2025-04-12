@@ -16,6 +16,8 @@ class Control {
     protected:
     bool _tune_or_ptt();
     void _every_ms10();
+    void _handle_normal_view(uint8_t event);
+    uint16_t _step_size;
     uint32_t _tune_freq_hz;
     uint16_t _tx_timer;
     uint8_t _tx_state;

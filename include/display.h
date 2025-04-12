@@ -26,6 +26,8 @@ class Display {
 
     void set_current_view(uint8_t new_view);
 
+    uint8_t get_current_view();
+
     /*
     * Update frequency portion on display
     */

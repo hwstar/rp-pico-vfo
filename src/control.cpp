@@ -27,6 +27,7 @@ void Control::begin(Display *display, Pll *pll) {
     digitalWrite(GPIO_AGC_DISABLE, false);
 
     this->_tune_freq_hz = CONFIG_DEFAULT_TUNE_FREQ;
+    this->_step_size = CONFIG_DEFAULT_STEP_SIZE;
 
 }
 
@@ -48,6 +49,7 @@ void Control::tick() {
 
 void Control::release() {
     this->_pll->set_freq(this->_tune_freq_hz);
+    this->_display->update_freq(this->_tune_freq_hz);
     this->_released = true;
    
 }
@@ -57,6 +59,21 @@ void Control::encoder_event(uint8_t event) {
     /* Ignore encoder events if not released or we are transmitting */
     if(!this->_released || this->_is_transmitting) {
         return;
+    }
+    /*
+    * Select handler based on view
+    */
+    switch(this->_display->get_current_view()) {
+        case VIEW_NORMAL:
+            this->_handle_normal_view(event);
+            break;
+
+        case VIEW_ERROR:
+        case VIEW_MENU:
+        case VIEW_SPECIAL:
+        default:
+            break;
+
     }
 
 }
@@ -125,4 +142,30 @@ void Control::_every_ms10() {
 bool Control::_tune_or_ptt() {
     /* Return true if PTT or TUNE switches are closed */
     return ( digitalRead(GPIO_PTT_BUTTON) || digitalRead(GPIO_TUNE_BUTTON));
+}
+
+
+void Control::_handle_normal_view(uint8_t event) {
+    switch(event) {
+        case ENCODER_SWITCH_FORWARD:
+            this->_tune_freq_hz += this->_step_size;
+            this->_display->update_freq(this->_tune_freq_hz);
+            this->_pll->set_freq(this->_tune_freq_hz);
+
+            break;
+
+        case ENCODER_SWITCH_REVERSE:
+            this->_tune_freq_hz -= this->_step_size;
+            this->_display->update_freq(this->_tune_freq_hz);
+            this->_pll->set_freq(this->_tune_freq_hz);
+
+
+            break;
+
+        default:
+            break;
+
+    }
+
+
 }
