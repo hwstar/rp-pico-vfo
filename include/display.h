@@ -38,7 +38,7 @@ class Display {
     * Update transmit status portion on display
     */
 
-    void update_tx(bool tx);
+    void update_tx(bool tx, bool tune_mode = false);
 
     /*
     * Update sideband on display

@@ -26,6 +26,7 @@ void Control::begin(Display *display, Pll *pll) {
     pinMode(GPIO_AGC_DISABLE, OUTPUT);
     digitalWrite(GPIO_AGC_DISABLE, false);
 
+    this->_agc_enabled = true;
     this->_tune_freq_hz = CONFIG_DEFAULT_TUNE_FREQ;
     this->_step_size = CONFIG_DEFAULT_STEP_SIZE;
 
@@ -50,6 +51,9 @@ void Control::tick() {
 void Control::release() {
     this->_pll->set_freq(this->_tune_freq_hz);
     this->_display->update_freq(this->_tune_freq_hz);
+    this->_display->update_tx(this->_is_transmitting, this->_tune_mode);
+    this->_display->update_sideband(this->_sideband);
+    this->_display->update_agc(this->_agc_enabled);
     this->_released = true;
    
 }

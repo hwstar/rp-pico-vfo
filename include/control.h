@@ -23,6 +23,9 @@ class Control {
     uint8_t _tx_state;
     bool _released;
     bool _is_transmitting;
+    bool _tune_mode;
+    bool _sideband;
+    bool _agc_enabled;
 
     Display *_display;
     Pll *_pll;

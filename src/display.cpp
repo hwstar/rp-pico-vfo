@@ -15,8 +15,8 @@
 #define SIDEBAND_LEN 3
 
 // TX or RX
-#define TX_MODE_LINE 1
-#define TX_MODE_OFFSET 15
+#define TX_MODE_LINE 0
+#define TX_MODE_OFFSET 10
 #define TX_MODE_LEN 2
 
 // AGC
@@ -65,9 +65,15 @@ void Display::update_sideband(bool sideband){
 
 }
 
-void Display::update_tx(bool tx) {
+void Display::update_tx(bool tx, bool tune_mode) {
     DisplayChars *vp = &this->_views[VIEW_NORMAL];
-    memcpy(vp->lines[TX_MODE_LINE] + TX_MODE_OFFSET, tx ? "TX" : "RX", TX_MODE_LEN);
+    if(tune_mode) {
+        memcpy(vp->lines[TX_MODE_LINE] + TX_MODE_OFFSET, "TU", TX_MODE_LEN);
+    }
+    else {
+        memcpy(vp->lines[TX_MODE_LINE] + TX_MODE_OFFSET, tx ? "TX" : "RX", TX_MODE_LEN);
+    }
+    
     vp->dirty = true;
 
 
