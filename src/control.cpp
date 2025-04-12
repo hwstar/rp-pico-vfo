@@ -66,7 +66,9 @@ void Control::release() {
     this->_display->update_freq(this->_band_table[this->_current_band].tune_freq_hz);
     this->_display->update_tx(this->_is_transmitting, this->_tune_mode);
     this->_display->update_sideband(this->_band_table[this->_current_band].sideband);
+    this->_display->update_band_name(this->_band_table[this->_current_band].name);
     this->_display->update_agc(this->_agc_enabled);
+    this->_display->update_tune_step_size(this->_step_size_table[this->_step_size_index]);
     this->_released = true;
    
 }

@@ -19,15 +19,21 @@
 #define TX_MODE_OFFSET 10
 #define TX_MODE_LEN 2
 
+// Band Name
+#define BAND_NAME_LINE 1
+#define BAND_NAME_OFFSET 4
+#define BAND_NAME_LEN 4
+
 // AGC
 #define AGC_LINE 1
-#define AGC_OFFSET 10
+#define AGC_OFFSET 9
 #define AGC_LEN 3
 
 // Tuning step size
 #define TUNE_STEP_LINE 1
-#define TUNE_STEP_OFFSET 13
+#define TUNE_STEP_OFFSET 12
 #define TUNE_STEP_LEN 3
+
 
 
 LiquidCrystal lcd_display(GPIO_LCD_RS, GPIO_LCD_E, GPIO_LCD_DB4, GPIO_LCD_DB5, GPIO_LCD_DB6, GPIO_LCD_DB7);
@@ -94,19 +100,26 @@ void Display::update_agc(bool agc){
 
 
 void Display::update_tune_step_size(uint16_t step_size) {
-    DisplayChars *vp = &this->_views[VIEW_NORMAL];
     switch(step_size) {
         case 10:
         case 100:
         case 500:
-            //this->printf(vp = &this->_views[VIEW_NORMAL], step_size);
+            this->printf(TUNE_STEP_LINE, TUNE_STEP_OFFSET, TUNE_STEP_LEN, "%3u", step_size);
             break;
 
         case 1000:
-            //this->printf(DisplayChars *vp = &this->_views[VIEW_NORMAL], "%3s", "1K");
+            this->printf(TUNE_STEP_LINE, TUNE_STEP_OFFSET, TUNE_STEP_LEN, "%3s", "1K");
+            break;
+
+        case 10000:
+            this->printf(TUNE_STEP_LINE, TUNE_STEP_OFFSET, TUNE_STEP_LEN, "%3s", "10K");
             break;
     }
 
+}
+
+void Display::update_band_name(char *band_name) {
+    this->printf(BAND_NAME_LINE, BAND_NAME_OFFSET, BAND_NAME_LEN, "%4s", band_name);
 }
 
 void Display::clear_view(uint8_t view) {
@@ -122,19 +135,21 @@ void Display::clear_view(uint8_t view) {
 }
 
 
-void Display::printf(uint8_t row, uint8_t col, const char *format, ...) {
+void Display::printf(uint8_t row, uint8_t col, uint8_t len, const char *format, ...) {
+    char ws[DISPLAY_MAX_LINE_LENGTH + 1];
     va_list args; 
     va_start(args, format); 
     DisplayChars *vp = &this->_views[this->_current_view];
     
-    if((col >= DISPLAY_MAX_LINES) || (row >= DISPLAY_MAX_LINE_LENGTH )) {
+    if((row >= DISPLAY_MAX_LINES) || (col >= DISPLAY_MAX_LINE_LENGTH )) {
         return; /* Out of bounds */
     }
    
     char *line_buffer_pos = vp->lines[row] + col;
-    uint8_t window_size = DISPLAY_MAX_LINE_LENGTH - col;
+ 
 
-    vsnprintf(line_buffer_pos, window_size, format, args);
+    vsnprintf(ws, DISPLAY_MAX_LINE_LENGTH + 1, format, args);
+    memcpy(line_buffer_pos, ws, len);
     vp->dirty = true;
 }
 

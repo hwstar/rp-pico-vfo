@@ -8,6 +8,7 @@
 
 #define MAX_NUM_OF_BANDS 8
 #define BAND_TABLE_NAME_SIZE 8
+#define NUMBER_OF_STEP_SIZES 5
 
 typedef struct band_table {
     char name[BAND_TABLE_NAME_SIZE];
@@ -33,7 +34,7 @@ class Control {
 
     
     band_table _band_table[MAX_NUM_OF_BANDS];
-    const uint16_t _step_size_table[5] = {10, 100, 500, 1000, 10000};
+    const uint16_t _step_size_table[NUMBER_OF_STEP_SIZES] = {10, 100, 500, 1000, 10000};
     uint16_t _tx_timer;
     uint8_t _tx_state;
     uint8_t _current_band;

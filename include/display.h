@@ -59,6 +59,12 @@ class Display {
     void update_tune_step_size(uint16_t step_size);
 
     /*
+    * Update band name
+    */
+
+    void update_band_name(char *band_name);
+
+    /*
     * Clear a display view
     */
 
@@ -67,7 +73,7 @@ class Display {
     /*
     * Printf to the current view
     */
-    void printf(uint8_t row, uint8_t col, const char *format, ...);
+    void printf(uint8_t row, uint8_t col, uint8_t len, const char *format, ...);
 
     /* Set the display backlight state */
 
