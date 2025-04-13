@@ -28,7 +28,6 @@ class Control {
 
 
     protected:
-    bool _tune_or_ptt();
     void _every_ms10();
     void _handle_normal_view(uint8_t event);
 

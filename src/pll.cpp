@@ -143,6 +143,16 @@ void Pll::_set_clock_freqs() {
         * Set the local oscillator frequencies in the Si5351
         */
 
+        /*
+        Serial.print("LO first: ");
+        Serial.println(lo_first);
+
+        Serial.print("LO second: ");
+        Serial.println(lo_second);
+        */
+        
+
+
         this->_set_freq_hz(lo_first, SI5351_CLK0);
         this->_set_freq_hz(lo_second, SI5351_CLK2);
         

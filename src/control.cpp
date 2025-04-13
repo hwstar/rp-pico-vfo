@@ -102,20 +102,24 @@ void Control::_every_ms10() {
     if(!this->_released) {
         return;
     }
+    bool ptt = digitalRead(GPIO_PTT_BUTTON);
+    bool tb = digitalRead(GPIO_TUNE_BUTTON);
     /* PTT sequencer*/
     switch(this->_tx_state) {
         case TX_IDLE:
             this->_is_transmitting = false;
-            if(this->_tune_or_ptt()) {
+            if(ptt || tb) {
                 /* User keyed */
-                if(digitalRead(GPIO_TUNE_BUTTON)) {
-                    /* If user pressed the tune button, then we need to set tune out high*/
+                if(tb) {
+                    /* If user pressed the tune button, then we need to set tune out high */
                     digitalWrite(GPIO_TUNE_OUT, true);
                 }
                 this->_is_transmitting = true;
                 digitalWrite(GPIO_MUTE_OUT, true);
                 /* Tell PLL to switch to transmit injection frequencies */
                 this->_pll->set_tx_state(true);
+                /* Update status on display */
+                this->_display->update_tx(ptt, tb);
                 this->_tx_timer = 0;
                 this->_tx_state = TX_MUTE_WAIT;
             }
@@ -130,7 +134,7 @@ void Control::_every_ms10() {
             break;
 
         case TX_PTT:
-            if(!this->_tune_or_ptt()) { 
+            if(!(ptt || tb)) { 
                 this->_tx_timer = 0; /* User unkeyed */
                 digitalWrite(GPIO_TUNE_OUT, false);
                 digitalWrite(GPIO_PTT_OUT, false);
@@ -145,6 +149,8 @@ void Control::_every_ms10() {
                 this->_is_transmitting = false;
                 /* Unmute RX audio */
                 digitalWrite(GPIO_MUTE_OUT, false);
+                /* Update status on display */
+                this->_display->update_tx(false);
                 this->_tx_state = TX_IDLE;
             }
             break;
@@ -157,12 +163,6 @@ void Control::_every_ms10() {
    this->_tx_timer++;
 
 }
-
-bool Control::_tune_or_ptt() {
-    /* Return true if PTT or TUNE switches are closed */
-    return ( digitalRead(GPIO_PTT_BUTTON) || digitalRead(GPIO_TUNE_BUTTON));
-}
-
 
 void Control::_handle_normal_view(uint8_t event) {
     uint16_t step_size = this->_step_size_table[this->_step_size_index];
