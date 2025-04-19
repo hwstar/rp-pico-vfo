@@ -31,7 +31,7 @@
 
 // Tuning step size
 #define TUNE_STEP_LINE 1
-#define TUNE_STEP_OFFSET 12
+#define TUNE_STEP_OFFSET 13
 #define TUNE_STEP_LEN 3
 
 

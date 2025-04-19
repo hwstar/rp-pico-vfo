@@ -169,7 +169,7 @@ void Control::_handle_normal_view(uint8_t event) {
     band_table *current_band = &this->_band_table[this->_current_band];
     switch(event) {
        
-        case ENCODER_SWITCH_FORWARD:
+        case ENCODER_SWITCH_FORWARD: /* Rotation in forward direction */
             /* Test band upper limit */
             if(current_band->tune_freq_hz + step_size <= current_band->upper_limit) {
                 /* Will still be in band, so increase tune freq by the step size and update everything */
@@ -180,7 +180,7 @@ void Control::_handle_normal_view(uint8_t event) {
 
             break;
 
-        case ENCODER_SWITCH_REVERSE:
+        case ENCODER_SWITCH_REVERSE: /* Rotation in reverse direction */
             /* Test band lower limit */
             if(current_band->tune_freq_hz - step_size >= current_band->lower_limit) {
                 /* Will still be in band, so decrease tune freq by the step size and update everything */
@@ -189,6 +189,16 @@ void Control::_handle_normal_view(uint8_t event) {
                 this->_pll->set_freq(current_band->tune_freq_hz);
             }
             break;
+
+        case ENCODER_KNOB_SWITCH_PRESSED_SHORT: /* Short duration encoder knob press */
+            /* Change frequency step */
+            this->_step_size_index++;
+            if(this->_step_size_index >= NUMBER_OF_STEP_SIZES) {
+                this->_step_size_index = 0;
+            }
+            this->_display->update_tune_step_size(this->_step_size_table[this->_step_size_index]);
+            break;
+            
 
         default:
             break;
