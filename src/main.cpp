@@ -59,7 +59,7 @@ void setup() {
 
     /* Boot up banner */
     display.set_current_view(VIEW_SPECIAL);
-    display.printf(0, 0, 10, "40 METER XVCR");
+    display.printf(0, 0, 13, "40 METER XVCR");
     display.printf(1, 0, 12, "V 0.0 WA6ZFT");
     
 
