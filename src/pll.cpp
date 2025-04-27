@@ -22,6 +22,7 @@ bool Pll::begin(MbedI2C *i2c_bus, uint32_t ref_freq, uint32_t cf_zero_hz_freq, u
     if(!res) {
         return res;
     }
+    
 
     /* Set up Si5351 */
 
@@ -35,7 +36,7 @@ bool Pll::begin(MbedI2C *i2c_bus, uint32_t ref_freq, uint32_t cf_zero_hz_freq, u
 
     /* Set intial clock frequencies */
     this->_set_clock_freqs();
-    return false;
+    return true;
 }
 
 void Pll::set_freq(unsigned freq) {
