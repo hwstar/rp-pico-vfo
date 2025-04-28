@@ -3,12 +3,12 @@
 const char *HEADER_ID = "Persistent Storage";
 const uint16_t HEADER_START = 0;
 const uint16_t DICTIONARY_START = EEPROM_24CW640_PAGE_SIZE;
-const uint16_t DICTIONARY_SIZE = (11 * EEPROM_24CW640_PAGE_SIZE);
-const uint16_t OFFSET_START (12 * EEPROM_24CW640_PAGE_SIZE);
-const uint16_t OFFSET_SIZE (4 * EEPROM_24CW640_PAGE_SIZE);
+const uint16_t DICTIONARY_SIZE = (63 * EEPROM_24CW640_PAGE_SIZE);
+const uint16_t OFFSET_START (64 * EEPROM_24CW640_PAGE_SIZE);
+const uint16_t OFFSET_SIZE (32 * EEPROM_24CW640_PAGE_SIZE);
 const uint16_t OFFSET_COUNT (OFFSET_SIZE / sizeof(uint16_t));
-const uint16_t DATA_START (16 * EEPROM_24CW640_PAGE_SIZE);
-const uint16_t DATA_SIZE (16 * EEPROM_24CW640_PAGE_SIZE);
+const uint16_t DATA_START (96 * EEPROM_24CW640_PAGE_SIZE);
+const uint16_t DATA_SIZE (160 * EEPROM_24CW640_PAGE_SIZE);
 const uint32_t STORAGE_VERSION = 0;
 
 typedef struct StorageHeader  {
@@ -197,7 +197,8 @@ bool PersistentStorage::add_key(const char *key, uint16_t storage_size) {
     uint16_t key_length = 1 + strlen(key);
     if(free_space > key_length) {
         // Copy the key into the dictionary
-        strncpy(dictionary + i, key, key_length);
+        char *d = dictionary + i;
+        strncpy(d, key, key_length);
     }
     else {
         // Not enough space to store the key
@@ -318,7 +319,8 @@ bool PersistentStorage::write(const char *key, uint32_t value) {
         return this->_result;
     }
     // Store the value in RAM
-    *(uint32_t *) (this->_contents + DATA_START + data_offset) = value;
+    uint8_t *value_region  = (this->_contents + DATA_START);
+    *(uint32_t *) (value_region + data_offset) = value;
 
     // Set the dirty bit
     this->_dirty = true;
@@ -358,7 +360,8 @@ bool PersistentStorage::write(const char *key, int32_t value) {
         return this->_result;
     }
     // Store the value in RAM
-    *(int32_t *) (this->_contents + DATA_START + data_offset) = value;
+    uint8_t *value_region  = (this->_contents + DATA_START);
+    *(int32_t *) (value_region + data_offset) = value;
 
     // Set the dirty bit
     this->_dirty = true;

@@ -5,6 +5,7 @@
 #include "display.h"
 #include "pll.h"
 #include "config_default.h"
+#include "persistent_storage.h"
 
 #define MAX_NUM_OF_BANDS 8
 #define BAND_TABLE_NAME_SIZE 8
@@ -21,7 +22,7 @@ typedef struct band_table {
 
 class Control {
     public:
-    void begin(Display *display, Pll *pll);
+    void begin(Display *display, Pll *pll, PersistentStorage *ps);
     void release();
     void tick();
     void encoder_event(uint8_t event);
@@ -45,4 +46,5 @@ class Control {
 
     Display *_display;
     Pll *_pll;
+    PersistentStorage *_ps;
 };

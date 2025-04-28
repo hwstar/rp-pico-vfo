@@ -3,6 +3,8 @@
 #include <Wire.h>
 #include "gpio.h"
 #include "24cw640.h"
+#include "persistent_storage.h"
+#include "config_keys.h"
 #include "EncoderSwitch.h"
 #include "display.h"
 #include "pll.h"
@@ -25,12 +27,15 @@ EncoderSwitch encoder;
 MbedI2C I2C_int(12, 13); // Must be GPxx as a number predefined arduino pins do not work! 
 MbedI2C I2C_ext(10, 11); // Must be GPxx as a number predefined arduino pins do not work!
 Eeprom24C640 eeprom;
+PersistentStorage persistent_storage;
 
 
 
 /* Variables */
 
 uint64_t ms_ticks;
+
+
 
 void setup() {
     // Initialize ticker
@@ -54,8 +59,9 @@ void setup() {
     display.set_backlight(true);
     // Initialize EEPROM 
     eeprom.begin(&I2C_int, 0x50);
+   
     // Initialize control
-    control.begin(&display, &pll);
+    control.begin(&display, &pll, &persistent_storage);
 
     // Boot up banner 
     display.set_current_view(VIEW_SPECIAL);
@@ -111,13 +117,27 @@ void two_mS() {
     control.tick();
     encoder.tick();
     if(!initialized && (ms_ticks == 2500)){ // Display boot up banner displays for 5 seconds
-        // Check for eeprom I2C device present 
-        if(!eeprom.present()) {
+        // Try to read in the contents of the eeprom I2C device
+        if(!persistent_storage.begin(&eeprom)) {
             error_missing_eeprom();
         }
+        if(!persistent_storage.validate_contents()) {
+            persistent_storage.format();
+            persistent_storage.add_key(KEY_CALIB, sizeof(int32_t));
+            persistent_storage.write(KEY_CALIB, (int32_t) CONFIG_DEFAULT_REF_CLK_CAL);
+            persistent_storage.add_key(KEY_INIT_FREQ, sizeof(uint32_t));
+            persistent_storage.write(KEY_INIT_FREQ, (uint32_t) CONFIG_DEFAULT_BAND_INITIAL_FREQUENCY_0);
+            persistent_storage.commit();
+        }
+
+
+
         // Initialize PLL 
         // See config_default.h for constants 
-        bool res = pll.begin(&I2C_int, CONFIG_DEFAULT_REF_CLK_FREQ, CONFIG_DEFAULT_IF_ZERO_HZ_FREQ, 10000000, CONFIG_DEFAULT_REF_CLK_CAL);
+        int32_t calibration_value;
+        bool res;
+        res = persistent_storage.read(KEY_CALIB, &calibration_value);
+        res = pll.begin(&I2C_int, CONFIG_DEFAULT_REF_CLK_FREQ, CONFIG_DEFAULT_IF_ZERO_HZ_FREQ, 10000000, CONFIG_DEFAULT_REF_CLK_CAL);
         if(!res) {
             error_missing_si5351();
         }

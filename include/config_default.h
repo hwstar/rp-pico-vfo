@@ -11,5 +11,5 @@
 #define CONFIG_DEFAULT_BAND_NAME_0 "40M" /* 40 Meters */
 #define CONFIG_DEFAULT_BAND_LOWER_LIMIT_HZ_0 7128000 /* Lower limit 7.128 MHz */
 #define CONFIG_DEFAULT_BAND_UPPER_LIMIT_HZ_0 7297000 /* Upper limit 7.297 MHz */
-#define CONFIG_DEFAULT_BAND_INITIAL_FREQUENCY_0 7200000 /* Initial frequency at power on */
+#define CONFIG_DEFAULT_BAND_INITIAL_FREQUENCY_0 7255000 /* Initial frequency at power on */
 #define CONFIG_DEFAULT_BAND_SIDEBAND_0 false /* Lower sideband */

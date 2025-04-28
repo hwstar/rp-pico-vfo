@@ -1,6 +1,7 @@
 #pragma once
 #include "24cw640.h"
 
+
 class PersistentStorage {
     public:
     bool begin(Eeprom24C640 *eeprom);

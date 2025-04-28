@@ -1,13 +1,16 @@
 #include "control.h"
 #include "gpio.h"
 #include "config_default.h"
+#include "persistent_storage.h"
+#include "config_keys.h"
 
 enum {TX_IDLE=0, TX_MUTE_WAIT, TX_PTT, TX_UNMUTE_WAIT};
 
 
-void Control::begin(Display *display, Pll *pll) {
+void Control::begin(Display *display, Pll *pll, PersistentStorage *ps) {
     this->_display = display;
     this->_pll = pll;
+    this->_ps = ps;
 
     /* GPIO Initialization */
 
@@ -30,18 +33,9 @@ void Control::begin(Display *display, Pll *pll) {
      /* Initialize defaults */
 
     this->_agc_enabled = true;
-    this->_step_size_index = CONFIG_DEFAULT_STEP_SIZE_INDEX;
-    this->_current_band = CONFIG_DEFAULT_INITIAL_BAND_INDEX;
+   
 
-    /* Initialize band table */
-    #ifdef CONFIG_DEFAULT_BAND_NAME_0
-    strncpy(this->_band_table[0].name, CONFIG_DEFAULT_BAND_NAME_0, BAND_TABLE_NAME_SIZE);
-    this->_band_table[0].lower_limit = CONFIG_DEFAULT_BAND_LOWER_LIMIT_HZ_0;
-    this->_band_table[0].upper_limit = CONFIG_DEFAULT_BAND_UPPER_LIMIT_HZ_0;
-    this->_band_table[0].tune_freq_hz = CONFIG_DEFAULT_BAND_INITIAL_FREQUENCY_0;
-    this->_band_table[0].sideband = CONFIG_DEFAULT_BAND_SIDEBAND_0;
-
-    #endif
+  
    
 }
 
@@ -62,6 +56,20 @@ void Control::tick() {
 
 
 void Control::release() {
+    // Initialization
+    this->_step_size_index = CONFIG_DEFAULT_STEP_SIZE_INDEX;
+    this->_current_band = CONFIG_DEFAULT_INITIAL_BAND_INDEX;
+
+    // Initialize band table
+    #ifdef CONFIG_DEFAULT_BAND_NAME_0
+    strncpy(this->_band_table[0].name, CONFIG_DEFAULT_BAND_NAME_0, BAND_TABLE_NAME_SIZE);
+    this->_band_table[0].lower_limit = CONFIG_DEFAULT_BAND_LOWER_LIMIT_HZ_0;
+    this->_band_table[0].upper_limit = CONFIG_DEFAULT_BAND_UPPER_LIMIT_HZ_0;
+    this->_ps->read(KEY_INIT_FREQ, &this->_band_table[0].tune_freq_hz);
+    this->_band_table[0].sideband = CONFIG_DEFAULT_BAND_SIDEBAND_0;
+    #endif
+
+    // Setup
     this->_pll->set_freq(this->_band_table[this->_current_band].tune_freq_hz);
     this->_display->update_freq(this->_band_table[this->_current_band].tune_freq_hz);
     this->_display->update_tx(this->_is_transmitting, this->_tune_mode);
