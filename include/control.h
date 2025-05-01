@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include "EncoderSwitch.h"
+#include "menu.h"
 #include "display.h"
 #include "pll.h"
 #include "config_default.h"
@@ -22,7 +23,7 @@ typedef struct band_table {
 
 class Control {
     public:
-    void begin(Display *display, Pll *pll, PersistentStorage *ps);
+    void begin();
     void release();
     void tick();
     void encoder_event(uint8_t event);
@@ -31,6 +32,7 @@ class Control {
     protected:
     void _every_ms10();
     void _handle_normal_view(uint8_t event);
+    void _handle_menu_view(uint8_t event);
 
     
     band_table _band_table[MAX_NUM_OF_BANDS];
@@ -44,7 +46,5 @@ class Control {
     bool _tune_mode;
     bool _agc_enabled;
 
-    Display *_display;
-    Pll *_pll;
-    PersistentStorage *_ps;
+    
 };

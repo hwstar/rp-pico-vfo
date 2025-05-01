@@ -12,6 +12,8 @@
 #include "config_default.h"
 
 
+extern void menu_init(void);
+
 /* Forward declarations */
 
 void two_mS();
@@ -27,7 +29,8 @@ EncoderSwitch encoder;
 MbedI2C I2C_int(12, 13); // Must be GPxx as a number predefined arduino pins do not work! 
 MbedI2C I2C_ext(10, 11); // Must be GPxx as a number predefined arduino pins do not work!
 Eeprom24C640 eeprom;
-PersistentStorage persistent_storage;
+PersistentStorage ps;
+
 
 
 
@@ -43,10 +46,6 @@ void setup() {
     // Initialize I2C
     I2C_int.begin(); // Internal bus with SI5351, EEPROM
     I2C_ext.begin(); // External I2C bus
-    
-   
-
-
     // Initialize USB Serial
     Serial.begin(115200);
     // Initialize debug port
@@ -59,9 +58,10 @@ void setup() {
     display.set_backlight(true);
     // Initialize EEPROM 
     eeprom.begin(&I2C_int, 0x50);
-   
+    // Initialize menu
+    menu_init();
     // Initialize control
-    control.begin(&display, &pll, &persistent_storage);
+    control.begin();
 
     // Boot up banner 
     display.set_current_view(VIEW_SPECIAL);
@@ -118,16 +118,16 @@ void two_mS() {
     encoder.tick();
     if(!initialized && (ms_ticks == 2500)){ // Display boot up banner displays for 5 seconds
         // Try to read in the contents of the eeprom I2C device
-        if(!persistent_storage.begin(&eeprom)) {
+        if(!ps.begin(&eeprom)) {
             error_missing_eeprom();
         }
-        if(!persistent_storage.validate_contents()) {
-            persistent_storage.format();
-            persistent_storage.add_key(KEY_CALIB, sizeof(int32_t));
-            persistent_storage.write(KEY_CALIB, (int32_t) CONFIG_DEFAULT_REF_CLK_CAL);
-            persistent_storage.add_key(KEY_INIT_FREQ, sizeof(uint32_t));
-            persistent_storage.write(KEY_INIT_FREQ, (uint32_t) CONFIG_DEFAULT_BAND_INITIAL_FREQUENCY_0);
-            persistent_storage.commit();
+        if(!ps.validate_contents()) {
+            ps.format();
+            ps.add_key(KEY_CALIB, sizeof(int32_t));
+            ps.write(KEY_CALIB, (int32_t) CONFIG_DEFAULT_REF_CLK_CAL);
+            ps.add_key(KEY_INIT_FREQ, sizeof(uint32_t));
+            ps.write(KEY_INIT_FREQ, (uint32_t) CONFIG_DEFAULT_BAND_INITIAL_FREQUENCY_0);
+            ps.commit();
         }
 
 
@@ -136,7 +136,7 @@ void two_mS() {
         // See config_default.h for constants 
         int32_t calibration_value;
         bool res;
-        res = persistent_storage.read(KEY_CALIB, &calibration_value);
+        res = ps.read(KEY_CALIB, &calibration_value);
         res = pll.begin(&I2C_int, CONFIG_DEFAULT_REF_CLK_FREQ, CONFIG_DEFAULT_IF_ZERO_HZ_FREQ, 10000000, CONFIG_DEFAULT_REF_CLK_CAL);
         if(!res) {
             error_missing_si5351();

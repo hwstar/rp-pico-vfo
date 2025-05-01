@@ -1,17 +1,121 @@
+
 #include "control.h"
+#include "display.h"
+#include "menu.h"
 #include "gpio.h"
 #include "config_default.h"
 #include "persistent_storage.h"
 #include "config_keys.h"
 
+
+// Enums
+
 enum {TX_IDLE=0, TX_MUTE_WAIT, TX_PTT, TX_UNMUTE_WAIT};
 
+// External object access needed for menu procedural functions 
+extern Control control;
+extern Pll pll;
+extern Display display;
+extern PersistentStorage ps;
 
-void Control::begin(Display *display, Pll *pll, PersistentStorage *ps) {
-    this->_display = display;
-    this->_pll = pll;
-    this->_ps = ps;
+// Variables
+bool agc_state = true;
+bool mode = false;
+//int32_t calibration_offset;
+// Objects
+Menu menu;
 
+
+// Forward declarations
+void menu_item_mode_on_entry();
+void menu_item_mode_action(uint8_t event);
+bool menu_item_mode_on_exit(bool confirm);
+void menu_item_agc_on_entry();
+void menu_item_agc_action(uint8_t event);
+bool menu_item_agc_on_exit(bool confirm);
+void draw_menu(const char *line1, const char *line2);
+void at_menu_exit();
+
+// Menu system data structures
+const menu_item item_top_mode = {"MODE", MENU_ITEM_TYPE_ACTION, NULL, menu_item_mode_on_entry, menu_item_mode_action, menu_item_mode_on_exit};
+const menu_item item_top_agc = {"AGC", MENU_ITEM_TYPE_ACTION, NULL, menu_item_agc_on_entry, menu_item_agc_action, menu_item_agc_on_exit};
+const menu_level top = {2,"*** Top Menu ***",{&item_top_mode, &item_top_agc}};
+
+
+// Menu initialization
+
+void menu_init() {
+    // Called from main.cpp to initialize the menu object
+    menu.begin(&top, draw_menu);
+}
+
+
+// Handler functions for menu system
+
+void menu_item_mode_on_entry() {
+    // Called when mode is selected by the user
+    // Show mode setting
+
+    const char *setting = mode ? "USB" : "LSB";
+    menu.draw_item_value(setting);
+}
+
+void menu_item_mode_action(uint8_t event) {
+    // Called when there is CW or CCW rotation with mode selected
+    mode = !mode;
+    pll.set_usb_mode(mode);
+    const char *setting = mode ? "USB" : "LSB";
+    display.update_sideband(mode);
+    menu.draw_item_value(setting);
+}
+
+bool menu_item_mode_on_exit(bool confirm) {
+    // Called when the user selects a value for mode, or aborts
+    return false;
+}
+
+void menu_item_agc_on_entry() {
+    // Called when agc is selected by the user
+    // Show AGC setting
+    const char *setting = agc_state ? "ON" : "OFF";
+    menu.draw_item_value(setting);
+    
+
+}
+
+void menu_item_agc_action(uint8_t event) {
+    // Called when there is CW or CCW rotation with agc selected
+    agc_state = !agc_state;
+    digitalWrite(GPIO_AGC_DISABLE, !agc_state);
+    display.update_agc(agc_state);
+    const char *setting = agc_state ? "ON" : "OFF";
+    menu.draw_item_value(setting);
+
+
+}
+
+bool menu_item_agc_on_exit(bool confirm) {
+    // Called when the user selects a value for agc, or aborts
+    return false;
+}
+
+
+
+void draw_menu(const char *line1, const char *line2) {
+    // Called by menu object to update the display when the user interacts with the knob
+    display.printf(0, 0, 16, "%-16s", line1);
+    display.printf(1, 0, 16, "%-16s", line2);
+}
+
+void at_menu_exit() {
+    // Called when the menu system is exited by the user
+
+}
+
+
+// Control class
+
+void Control::begin() {
     /* GPIO Initialization */
 
     pinMode(GPIO_PTT_BUTTON, INPUT);
@@ -33,10 +137,6 @@ void Control::begin(Display *display, Pll *pll, PersistentStorage *ps) {
      /* Initialize defaults */
 
     this->_agc_enabled = true;
-   
-
-  
-   
 }
 
 
@@ -65,18 +165,18 @@ void Control::release() {
     strncpy(this->_band_table[0].name, CONFIG_DEFAULT_BAND_NAME_0, BAND_TABLE_NAME_SIZE);
     this->_band_table[0].lower_limit = CONFIG_DEFAULT_BAND_LOWER_LIMIT_HZ_0;
     this->_band_table[0].upper_limit = CONFIG_DEFAULT_BAND_UPPER_LIMIT_HZ_0;
-    this->_ps->read(KEY_INIT_FREQ, &this->_band_table[0].tune_freq_hz);
+    ps.read(KEY_INIT_FREQ, &this->_band_table[0].tune_freq_hz);
     this->_band_table[0].sideband = CONFIG_DEFAULT_BAND_SIDEBAND_0;
     #endif
 
     // Setup
-    this->_pll->set_freq(this->_band_table[this->_current_band].tune_freq_hz);
-    this->_display->update_freq(this->_band_table[this->_current_band].tune_freq_hz);
-    this->_display->update_tx(this->_is_transmitting, this->_tune_mode);
-    this->_display->update_sideband(this->_band_table[this->_current_band].sideband);
-    this->_display->update_band_name(this->_band_table[this->_current_band].name);
-    this->_display->update_agc(this->_agc_enabled);
-    this->_display->update_tune_step_size(this->_step_size_table[this->_step_size_index]);
+    pll.set_freq(this->_band_table[this->_current_band].tune_freq_hz);
+    display.update_freq(this->_band_table[this->_current_band].tune_freq_hz);
+    display.update_tx(this->_is_transmitting, this->_tune_mode);
+    display.update_sideband(this->_band_table[this->_current_band].sideband);
+    display.update_band_name(this->_band_table[this->_current_band].name);
+    display.update_agc(this->_agc_enabled);
+    display.update_tune_step_size(this->_step_size_table[this->_step_size_index]);
     this->_released = true;
    
 }
@@ -90,14 +190,20 @@ void Control::encoder_event(uint8_t event) {
     /*
     * Select handler based on view
     */
-    switch(this->_display->get_current_view()) {
+    switch(display.get_current_view()) {
         case VIEW_NORMAL:
             this->_handle_normal_view(event);
             break;
 
         case VIEW_ERROR:
+            break;
+
         case VIEW_MENU:
+            this->_handle_menu_view(event);
+
         case VIEW_SPECIAL:
+            break;
+
         default:
             break;
 
@@ -125,9 +231,9 @@ void Control::_every_ms10() {
                 this->_is_transmitting = true;
                 digitalWrite(GPIO_MUTE_OUT, true);
                 /* Tell PLL to switch to transmit injection frequencies */
-                this->_pll->set_tx_state(true);
+                pll.set_tx_state(true);
                 /* Update status on display */
-                this->_display->update_tx(ptt, tb);
+                display.update_tx(ptt, tb);
                 this->_tx_timer = 0;
                 this->_tx_state = TX_MUTE_WAIT;
             }
@@ -147,7 +253,7 @@ void Control::_every_ms10() {
                 digitalWrite(GPIO_TUNE_OUT, false);
                 digitalWrite(GPIO_PTT_OUT, false);
                 /* Tell PLL to switch to receive injection frequencies */
-                this->_pll->set_tx_state(false);
+                pll.set_tx_state(false);
                 this->_tx_state = TX_UNMUTE_WAIT;
             }
             break;
@@ -158,7 +264,7 @@ void Control::_every_ms10() {
                 /* Unmute RX audio */
                 digitalWrite(GPIO_MUTE_OUT, false);
                 /* Update status on display */
-                this->_display->update_tx(false);
+                display.update_tx(false);
                 this->_tx_state = TX_IDLE;
             }
             break;
@@ -182,8 +288,8 @@ void Control::_handle_normal_view(uint8_t event) {
             if(current_band->tune_freq_hz + step_size <= current_band->upper_limit) {
                 /* Will still be in band, so increase tune freq by the step size and update everything */
                 current_band->tune_freq_hz += step_size;
-                this->_display->update_freq(current_band->tune_freq_hz);
-                this->_pll->set_freq(current_band->tune_freq_hz);
+                display.update_freq(current_band->tune_freq_hz);
+                pll.set_freq(current_band->tune_freq_hz);
             }
 
             break;
@@ -193,8 +299,8 @@ void Control::_handle_normal_view(uint8_t event) {
             if(current_band->tune_freq_hz - step_size >= current_band->lower_limit) {
                 /* Will still be in band, so decrease tune freq by the step size and update everything */
                 current_band->tune_freq_hz -= step_size;
-                this->_display->update_freq(current_band->tune_freq_hz);
-                this->_pll->set_freq(current_band->tune_freq_hz);
+                display.update_freq(current_band->tune_freq_hz);
+                pll.set_freq(current_band->tune_freq_hz);
             }
             break;
 
@@ -204,9 +310,17 @@ void Control::_handle_normal_view(uint8_t event) {
             if(this->_step_size_index >= NUMBER_OF_STEP_SIZES) {
                 this->_step_size_index = 0;
             }
-            this->_display->update_tune_step_size(this->_step_size_table[this->_step_size_index]);
+            display.update_tune_step_size(this->_step_size_table[this->_step_size_index]);
             break;
-            
+        
+        case ENCODER_KNOB_SWITCH_PRESSED_LONG: /* Long duration encoder knob press */
+            /* Enter menu system */
+            display.clear_view(VIEW_MENU);
+            display.set_current_view(VIEW_MENU);
+            menu.show();
+            break;
+          
+
 
         default:
             break;
@@ -214,4 +328,11 @@ void Control::_handle_normal_view(uint8_t event) {
     }
 
 
+}
+
+void Control::_handle_menu_view(uint8_t event) {
+    bool exited = menu.handler(event); 
+    if(exited) {
+        display.set_current_view(VIEW_NORMAL);
+    }
 }
