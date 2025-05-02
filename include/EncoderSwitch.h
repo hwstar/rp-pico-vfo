@@ -10,7 +10,7 @@
 #define ENCODER_KNOB_STATE_UP 0
 #define ENCODER_KNOB_STATE_DOWN 1
 
-
+#define KNOB_LONG_PRESS_TIME 1000 // Number of milliseconds to recognize a long press of the tuning knob
 
 
 class EncoderSwitch {

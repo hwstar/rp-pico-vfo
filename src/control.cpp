@@ -71,7 +71,7 @@ void menu_item_mode_action(uint8_t event) {
 
 bool menu_item_mode_on_exit(bool confirm) {
     // Called when the user selects a value for mode, or aborts
-    return false;
+    return true;
 }
 
 void menu_item_agc_on_entry() {
@@ -96,7 +96,7 @@ void menu_item_agc_action(uint8_t event) {
 
 bool menu_item_agc_on_exit(bool confirm) {
     // Called when the user selects a value for agc, or aborts
-    return false;
+    return true;
 }
 
 

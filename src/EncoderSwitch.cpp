@@ -1,5 +1,8 @@
 #include "EncoderSwitch.h"
 
+#define KNOB_LONG_PRESS_TICKS (KNOB_LONG_PRESS_TIME/2)
+
+
 void EncoderSwitch::begin(pin_size_t gpio_i, pin_size_t gpio_q, pin_size_t gpio_knob_switch, void(*callback)(uint8_t event)) {
     this->_gpio_i = gpio_i;
     this->_gpio_q = gpio_q;
@@ -54,7 +57,7 @@ void EncoderSwitch::tick() {
         case ENCODER_KNOB_STATE_DOWN:
             if((current_knob_switch_state != this->_previous_knob_switch_state) && (current_knob_switch_state == false)) {
                 this->_previous_knob_switch_state = current_knob_switch_state;
-                if(this->_knob_switch_timer >= 1000) { /* > 2 seconds? */
+                if(this->_knob_switch_timer >= KNOB_LONG_PRESS_TICKS) { /* if down for gtr. than knob long press ticks */
                     if(this->_callback) {
                         this->_callback(ENCODER_KNOB_SWITCH_PRESSED_LONG);
                     }
