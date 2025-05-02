@@ -19,6 +19,7 @@ void EncoderSwitch::begin(pin_size_t gpio_i, pin_size_t gpio_q, pin_size_t gpio_
 
 }
 
+
 void EncoderSwitch::tick() {
     this->_raw_read_i_q();
     if(this->_current_encoder_state != this->_previous_encoder_state) {

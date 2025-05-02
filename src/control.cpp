@@ -26,6 +26,7 @@ bool mode = false;
 Menu menu;
 
 
+
 // Forward declarations
 void menu_item_mode_on_entry();
 void menu_item_mode_action(uint8_t event);
@@ -33,6 +34,11 @@ bool menu_item_mode_on_exit(bool confirm);
 void menu_item_agc_on_entry();
 void menu_item_agc_action(uint8_t event);
 bool menu_item_agc_on_exit(bool confirm);
+void menu_item_cal_on_entry();
+void menu_item_cal_action(uint8_t event);
+bool menu_item_cal_on_exit(bool confirm);
+
+
 void draw_menu(const char *line1, const char *line2);
 void at_menu_exit();
 
@@ -99,18 +105,32 @@ bool menu_item_agc_on_exit(bool confirm) {
     return true;
 }
 
-
-
 void draw_menu(const char *line1, const char *line2) {
     // Called by menu object to update the display when the user interacts with the knob
     display.printf(0, 0, 16, "%-16s", line1);
     display.printf(1, 0, 16, "%-16s", line2);
 }
 
+void menu_item_cal_on_entry() {
+    // Called when cal is selected by the user
+
+}
+
+void menu_item_cal_action(uint8_t event) {
+    // Called when there is CW or CCW rotation with CAL selected
+}
+
+bool menu_item_cal_on_exit(bool confirm) {
+    // Called when the user selects a value for cal, or aborts
+    return false;
+}
+
 void at_menu_exit() {
     // Called when the menu system is exited by the user
 
 }
+
+
 
 
 // Control class
@@ -177,6 +197,9 @@ void Control::release() {
     display.update_band_name(this->_band_table[this->_current_band].name);
     display.update_agc(this->_agc_enabled);
     display.update_tune_step_size(this->_step_size_table[this->_step_size_index]);
+
+
+    // Indicate released
     this->_released = true;
    
 }
@@ -314,10 +337,10 @@ void Control::_handle_normal_view(uint8_t event) {
             break;
         
         case ENCODER_KNOB_SWITCH_PRESSED_LONG: /* Long duration encoder knob press */
-            /* Enter menu system */
             display.clear_view(VIEW_MENU);
             display.set_current_view(VIEW_MENU);
             menu.show();
+          
             break;
           
 
@@ -331,7 +354,10 @@ void Control::_handle_normal_view(uint8_t event) {
 }
 
 void Control::_handle_menu_view(uint8_t event) {
-    bool exited = menu.handler(event); 
+    bool exited;
+
+    exited = menu.handler(event); 
+   
     if(exited) {
         display.set_current_view(VIEW_NORMAL);
     }
