@@ -1,7 +1,9 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <si5351_ek_modified.h>
+#include "config_default.h"
 #include "pll.h"
+
 
 bool Pll::begin(MbedI2C *i2c_bus, uint32_t ref_freq, uint32_t cf_zero_hz_freq, uint32_t initial_tune_freq, int32_t correction) {
     this->_i2c_bus = i2c_bus;
@@ -61,6 +63,10 @@ void Pll::set_tx_state(bool state) {
 void Pll::set_usb_mode(bool mode){
     this->_usb_mode = mode;
     this->_set_clock_freqs();
+}
+
+bool Pll::get_usb_mode() {
+    return this->_usb_mode;
 }
 
 void Pll::_set_freq_hz(uint32_t freq_hz, enum si5351_clock output) {

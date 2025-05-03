@@ -13,6 +13,8 @@ class Pll {
     void set_tx_state(bool state);
     /* Set USB mode. (true = USB, false = LSB)*/
     void set_usb_mode(bool mode);
+    /* Retreive operating mode (LSB/USB)*/
+    bool get_usb_mode();
     /* Set calibration mode  (true = Calibration, false = Normal)*/
     void cal_mode(bool mode);
    

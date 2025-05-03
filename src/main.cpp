@@ -141,6 +141,7 @@ void two_mS() {
         if(!res) {
             error_missing_si5351();
         }
+      
 
         display.clear_view(VIEW_SPECIAL);
         // Switch to normal view

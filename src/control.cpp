@@ -19,8 +19,7 @@ extern Display display;
 extern PersistentStorage ps;
 
 // Variables
-bool agc_state = true;
-bool mode = false;
+bool agc_state = CONFIG_INITIAL_AGC;
 //int32_t calibration_offset;
 // Objects
 Menu menu;
@@ -43,9 +42,16 @@ void draw_menu(const char *line1, const char *line2);
 void at_menu_exit();
 
 // Menu system data structures
+#ifdef CONFIG_ENABLE_MODE_SWITCHING
 const menu_item item_top_mode = {"MODE", MENU_ITEM_TYPE_ACTION, NULL, menu_item_mode_on_entry, menu_item_mode_action, menu_item_mode_on_exit};
+#endif
 const menu_item item_top_agc = {"AGC", MENU_ITEM_TYPE_ACTION, NULL, menu_item_agc_on_entry, menu_item_agc_action, menu_item_agc_on_exit};
+#ifdef CONFIG_ENABLE_MODE_SWITCHING
 const menu_level top = {2,"*** Top Menu ***",{&item_top_mode, &item_top_agc}};
+#else
+const menu_level top = {1,"*** Top Menu ***",{&item_top_agc}};
+#endif
+
 
 
 // Menu initialization
@@ -58,18 +64,21 @@ void menu_init() {
 
 // Handler functions for menu system
 
+#ifdef CONFIG_ENABLE_MODE_SWITCHING
+
 void menu_item_mode_on_entry() {
     // Called when mode is selected by the user
     // Show mode setting
 
-    const char *setting = mode ? "USB" : "LSB";
+    const char *setting = pll.get_usb_mode() ? "USB" : "LSB";
     menu.draw_item_value(setting);
 }
 
 void menu_item_mode_action(uint8_t event) {
     // Called when there is CW or CCW rotation with mode selected
-    mode = !mode;
-    pll.set_usb_mode(mode);
+
+    pll.set_usb_mode(!pll.get_usb_mode());
+    bool mode = pll.get_usb_mode();
     const char *setting = mode ? "USB" : "LSB";
     display.update_sideband(mode);
     menu.draw_item_value(setting);
@@ -79,6 +88,8 @@ bool menu_item_mode_on_exit(bool confirm) {
     // Called when the user selects a value for mode, or aborts
     return true;
 }
+
+#endif
 
 void menu_item_agc_on_entry() {
     // Called when agc is selected by the user
@@ -193,7 +204,10 @@ void Control::release() {
     pll.set_freq(this->_band_table[this->_current_band].tune_freq_hz);
     display.update_freq(this->_band_table[this->_current_band].tune_freq_hz);
     display.update_tx(this->_is_transmitting, this->_tune_mode);
-    display.update_sideband(this->_band_table[this->_current_band].sideband);
+    bool mode = this->_band_table[this->_current_band].sideband;
+    pll.set_usb_mode(mode);
+    display.update_sideband(mode);
+    
     display.update_band_name(this->_band_table[this->_current_band].name);
     display.update_agc(this->_agc_enabled);
     display.update_tune_step_size(this->_step_size_table[this->_step_size_index]);
