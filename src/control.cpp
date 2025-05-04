@@ -20,7 +20,7 @@ extern PersistentStorage ps;
 
 // Variables
 bool agc_state = CONFIG_INITIAL_AGC;
-//int32_t calibration_offset;
+int32_t correction_ppb;
 // Objects
 Menu menu;
 
@@ -45,11 +45,12 @@ void at_menu_exit();
 #ifdef CONFIG_ENABLE_MODE_SWITCHING
 const menu_item item_top_mode = {"MODE", MENU_ITEM_TYPE_ACTION, NULL, menu_item_mode_on_entry, menu_item_mode_action, menu_item_mode_on_exit};
 #endif
+const menu_item item_top_cal = {"CAL", MENU_ITEM_TYPE_ACTION, NULL, menu_item_cal_on_entry, menu_item_cal_action, menu_item_cal_on_exit};
 const menu_item item_top_agc = {"AGC", MENU_ITEM_TYPE_ACTION, NULL, menu_item_agc_on_entry, menu_item_agc_action, menu_item_agc_on_exit};
 #ifdef CONFIG_ENABLE_MODE_SWITCHING
-const menu_level top = {2,"*** Top Menu ***",{&item_top_mode, &item_top_agc}};
+const menu_level top = {3,"*** Top Menu ***",{&item_top_mode, &item_top_agc, &item_top_cal}};
 #else
-const menu_level top = {1,"*** Top Menu ***",{&item_top_agc}};
+const menu_level top = {2,"*** Top Menu ***",{&item_top_agc, &top_item_cal}};
 #endif
 
 
@@ -58,7 +59,7 @@ const menu_level top = {1,"*** Top Menu ***",{&item_top_agc}};
 
 void menu_init() {
     // Called from main.cpp to initialize the menu object
-    menu.begin(&top, draw_menu);
+    menu.begin(&top, draw_menu, at_menu_exit);
 }
 
 
@@ -122,23 +123,49 @@ void draw_menu(const char *line1, const char *line2) {
     display.printf(1, 0, 16, "%-16s", line2);
 }
 
+void menu_item_cal_update_display(int32_t corr_ppb) {
+    // Update display with ppb value
+    char ppb_str[9];
+    snprintf(ppb_str, 9, "%-8ld", corr_ppb);
+    menu.draw_item_value(ppb_str);
+}
+
+
 void menu_item_cal_on_entry() {
     // Called when cal is selected by the user
-
+    ps.read(KEY_CALIB, &correction_ppb);
+    menu_item_cal_update_display(correction_ppb);
+    pll.cal_mode(true);
 }
+
+
 
 void menu_item_cal_action(uint8_t event) {
     // Called when there is CW or CCW rotation with CAL selected
+
+    if(event == MENU_KNOB_CW) {
+        correction_ppb+=10;
+    }
+    else {
+        correction_ppb-=10;
+    }
+    pll.set_correction(correction_ppb);
+    menu_item_cal_update_display(correction_ppb);
+
 }
 
 bool menu_item_cal_on_exit(bool confirm) {
     // Called when the user selects a value for cal, or aborts
-    return false;
+    if(confirm) {
+        ps.write(KEY_CALIB, correction_ppb);
+    }
+    pll.cal_mode(false);
+    return true;
 }
 
 void at_menu_exit() {
     // Called when the menu system is exited by the user
-
+    ps.commit();
 }
 
 

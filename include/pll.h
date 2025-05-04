@@ -9,6 +9,8 @@ class Pll {
     uint32_t get_freq();
     /* Set pll frequency */
     void set_freq(unsigned freq);
+    /* Set correction */
+    void set_correction(int32_t corr);
     /* Set the TX/RX state (TX = true, RX = False)*/
     void set_tx_state(bool state);
     /* Set USB mode. (true = USB, false = LSB)*/

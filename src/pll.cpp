@@ -74,6 +74,12 @@ void Pll::_set_freq_hz(uint32_t freq_hz, enum si5351_clock output) {
     this->_si5351->set_freq(freq, output);
 }
 
+void Pll::set_correction(int32_t corr) {
+    this->_si5351->set_correction(corr, SI5351_PLL_INPUT_XO);
+    this->_si5351->set_correction(corr, SI5351_PLL_INPUT_CLKIN);
+    this->_set_clock_freqs();
+}
+
 void Pll::_set_clock_freqs() {
 
     /*
