@@ -10,6 +10,7 @@
 #include "pll.h"
 #include "control.h"
 #include "config_default.h"
+#include "console.h"
 
 
 extern void menu_init(void);
@@ -30,6 +31,7 @@ MbedI2C I2C_int(12, 13); // Must be GPxx as a number predefined arduino pins do 
 MbedI2C I2C_ext(10, 11); // Must be GPxx as a number predefined arduino pins do not work!
 Eeprom24C640 eeprom;
 PersistentStorage ps;
+Console console;
 
 
 
@@ -46,10 +48,9 @@ void setup() {
     // Initialize I2C
     I2C_int.begin(); // Internal bus with SI5351, EEPROM
     I2C_ext.begin(); // External I2C bus
-    // Initialize USB Serial
-    Serial.begin(115200);
     // Initialize debug port
     Serial1.begin(115200);
+    Serial1.println("Radio Serial Port");
     // Initialize encoder
     encoder.begin(GPIO_ENCODER_I, GPIO_ENCODER_Q, GPIO_ENCODER_SWITCH, encoder_callback);
     // Initialize display
@@ -58,6 +59,8 @@ void setup() {
     display.set_backlight(true);
     // Initialize EEPROM 
     eeprom.begin(&I2C_int, 0x50);
+    // Initialize console port
+    console.setup();
     // Initialize menu
     menu_init();
     // Initialize control
@@ -65,7 +68,7 @@ void setup() {
 
     // Boot up banner 
     display.set_current_view(VIEW_SPECIAL);
-    display.printf(0, 0, 13, "40 METER XVCR");
+    display.printf(0, 0, 13, "RADIO OS");
     display.printf(1, 0, 12, "V 0.0 WA6ZFT");
     
 
@@ -73,12 +76,9 @@ void setup() {
 
 
 void loop() {
-    /*
-    static uint32_t previous_gpios = 0xFFFFFFFF;
-    */
-    // Update ticker
     ticker.update();
     display.update();
+    console.poll();
 }
 
 /*

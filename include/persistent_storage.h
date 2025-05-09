@@ -16,6 +16,9 @@ class PersistentStorage {
     bool write(const char *key, uint32_t value);
     bool write(const char *key, int32_t value);
 
+    bool is_dirty() {
+        return this->_dirty;
+    }
     bool commit();
 
 

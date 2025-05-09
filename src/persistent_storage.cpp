@@ -382,15 +382,17 @@ bool PersistentStorage::commit() {
     // Write all pages to eeprom
 
     if(this->_dirty) {
+        Serial1.println();
+        Serial1.print("Writing EEProm...");
         for(uint16_t i = 0; i < EEPROM_24C640_PAGE_COUNT; i++) {
             uint8_t *p = this->_contents + (i * EEPROM_24CW640_PAGE_SIZE);
             this->_result = this->_eeprom->write_page(i, p);
             if(!this->_result) {
                 break;
             }
-    
         }
         this->_dirty = false;
+        Serial1.println("Done");
     }
     return this-> _result;
 }
