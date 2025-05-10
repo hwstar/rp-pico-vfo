@@ -28,17 +28,18 @@ class Console {
     public:
     void setup(void);
     void poll(void);
+    void set_factory_defaults();
+    bool confirm_action(const char *query_string);
 
 
     protected:
     unsigned _make_arglist(char **argv, int max_args, char *str);
     bool _parse_command(unsigned argc, const Command_Table_Entry_Type *top);
-    bool _get_line();
+    bool _get_line(char *line_buffer, uint16_t line_buffer_size, uint16_t *line_index);
 
     char *_arg_list[MAX_ARGS];
     Holder_Type _args[MAX_ARGS];
     uint8_t _poll_state;
-    uint8_t _line_index;
     uint8_t _max_parameters;
     uint8_t _error_code;
     char _line_buffer[LINE_BUFFER_SIZE];

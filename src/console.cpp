@@ -2,16 +2,11 @@
 #include "console.h"
 #include "pll.h"
 #include "persistent_storage.h"
+#include "config_default.h"
 #include "config_keys.h"
 
 
-/*
- * Make a list of pointers to arguments from string passed in.
- *
- * Note: modifies the string passed in.
- *
- * Return number of arguments found.
- */
+#define CTE_END  {NULL, NULL, NULL, ""}
 
  enum {FIND_FIRST_CHAR=0, FIND_FIRST_SPACE};
  enum {PS_PROMPT=0, PS_WAIT_INPUT};
@@ -20,7 +15,7 @@
 * External classes
 */
 
-
+ extern Console console;
  extern Pll pll;
  extern PersistentStorage ps;
 
@@ -55,20 +50,53 @@ const static char *error_strings[] = {
  bool cal_off(Holder_Type *vars, uint8_t *error_code);
  bool cal_set(Holder_Type *vars, uint8_t *error_code);
  bool cal_get(Holder_Type *vars, uint8_t *error_code);
+ bool config_set_factory_defaults(Holder_Type *vars, uint8_t *error_code);
+
 
  static const Command_Table_Entry_Type cal[] = {
     {NULL, cal_on, args_none, "on"},
     {NULL, cal_off, args_none, "off"},
     {NULL, cal_set, args_single_int, "set"},
     {NULL, cal_get, args_none, "get"},
-    {NULL, NULL, NULL, ""} // End of table
+    CTE_END
+ };
+
+ static const Command_Table_Entry_Type config_set_factory[] = {
+    { NULL, config_set_factory_defaults, args_none, "defaults"},
+    CTE_END
+
+ };
+
+ static const Command_Table_Entry_Type config_set[] = {
+    {config_set_factory, NULL, args_single_int, "factory"},
+    CTE_END
+
+ };
+
+ static const Command_Table_Entry_Type config[] = {
+    {config_set, NULL, args_single_int, "set"},
+    CTE_END
+
  };
 
  static const Command_Table_Entry_Type top[] = {
-    {cal, NULL, args_single_int, "cal"},
-    {NULL, NULL, NULL, ""} // End of table
+    {cal, NULL, args_none, "cal"},
+    {config, NULL,args_none, "config"},
+    CTE_END
  };
 
+/* 
+* Config commands 
+*/
+
+ bool config_set_factory_defaults(Holder_Type *vars, uint8_t *error_code) {
+
+    if(console.confirm_action("Reset everything to factory defaults?")) {
+        console.set_factory_defaults();
+    }
+
+    return true;
+ }
  
 
  /*
@@ -120,7 +148,6 @@ const static char *error_strings[] = {
 
  void Console::setup(void) {
     this->_poll_state = PS_PROMPT;
-    this->_line_index = 0;
 }
 
 
@@ -130,16 +157,18 @@ const static char *error_strings[] = {
 
 void Console::poll(void) {
 	int argc;
+    static uint16_t length;
 	
 
     if(this->_poll_state == PS_PROMPT) {
         Serial1.println();
         Serial1.print(":");
         this->_poll_state = PS_WAIT_INPUT;
+        length = 0;
     }
     else {
 
-        if(!this->_get_line()) {
+        if(!this->_get_line(this->_line_buffer, LINE_BUFFER_SIZE, &length)) {
             return;
         }
         else {
@@ -148,6 +177,7 @@ void Console::poll(void) {
                 bool res = this->_parse_command(argc, top);
                 if(!res) {
                     Serial1.println();
+                    // Print error message
                     Serial1.print("?");
                     if(this->_error_code < CEC_NUM_ERROR_CODES ) {
                         Serial1.print(error_strings[this->_error_code]);
@@ -161,14 +191,62 @@ void Console::poll(void) {
     }
 }
 
+bool Console::confirm_action(const char *query_string) {
+    char line[2];
+    Serial1.println();
+    uint16_t length = 0;
+    while(true) {
+    
+        Serial1.print(query_string);
+        Serial1.print(" (Y/N): ");
+        // NB: this blocks everything so use with care
+        while(!this->_get_line(line, 2, &length));
+        if((line[0] == 'y') || (line[0] == 'Y')) {
+            return true;
+
+        }
+        else if ((line[0] == 'n') || (line[0] == 'N'))
+            return false;
+    }
+    return false;
+}
+
+void Console::set_factory_defaults() { 
+
+    Serial1.println();
+    Serial1.println("Setting factory defaults...");
+    ps.format();
+
+    // TCXO calibration
+    ps.add_key(KEY_CALIB, sizeof(int32_t));
+    ps.write(KEY_CALIB, (int32_t) CONFIG_DEFAULT_REF_CLK_CAL);
+    // Initial frequency
+    ps.add_key(KEY_INIT_FREQ, sizeof(uint32_t));
+    ps.write(KEY_INIT_FREQ, (uint32_t) CONFIG_DEFAULT_BAND_INITIAL_FREQUENCY_0);
+
+    // Write it all to the EEPROM
+    ps.commit();
+    Serial1.println("Restarting...");
+    delay(1000);
+
+    // Do a RP pico-specific software reset to force everything to reload
+    *((volatile uint32_t*)(PPB_BASE + 0x0ED0C)) = 0x5FA0004;
+}
+
 
 /*
  * Simple line input with backspace support
+ * Note: Nonblocking. Returns true if a line + enter is received, otherwise false
  */
 
-bool Console::_get_line() {
+bool Console::_get_line(char *line_buffer, uint16_t line_buffer_size, uint16_t *line_index) {
     char c;
 
+    // Sanity check
+    if(!line_buffer || !line_index || (*line_index >= line_buffer_size)) {
+        return false; // Es una tontería
+    }
+   
     if (!Serial1.available()) {
         return false;
     }
@@ -178,17 +256,16 @@ bool Console::_get_line() {
         return false;
     }
     else if(c == 0x0d) { /* Enter key (linux) */
-        this->_line_buffer[this->_line_index] = 0;
-        this->_line_index = 0;
+        line_buffer[*line_index] = 0;
         return true;
 
     }
     else if(c == 0x08) { /* Backspace key */
-        if(this->_line_index) {
+        if(*line_index) {
             Serial1.write(0x08);
             Serial1.write(' ');
             Serial1.write(0x08);
-            this->_line_index--;
+            (*line_index)--;
         }
 
     }
@@ -196,17 +273,17 @@ bool Console::_get_line() {
         return false;
     }
     else { /* Printable characters */
-        if(this->_line_index == (LINE_BUFFER_SIZE - 1)) {
+        if(*line_index == (line_buffer_size - 1)) {
             /* No more room in line buffer */
-            this->_line_buffer[this->_line_index] = 0;
+            line_buffer[*line_index] = 0;
             Serial1.write('\n');
-            this->_line_index = 0;
             return true;
             
         }
         else {
             Serial1.write(c);
-            this->_line_buffer[this->_line_index++] = c;
+            line_buffer[*line_index] = c;
+            (*line_index)++;
             return false;
         }
 

@@ -11,6 +11,7 @@
 #include "control.h"
 #include "config_default.h"
 #include "console.h"
+#include "version.h"
 
 
 extern void menu_init(void);
@@ -19,6 +20,7 @@ extern void menu_init(void);
 
 void two_mS();
 void encoder_callback(uint8_t event);
+const char *get_radio_os_version_string(bool abbr);
 
 /* Class Instatiations */
 
@@ -50,7 +52,9 @@ void setup() {
     I2C_ext.begin(); // External I2C bus
     // Initialize debug port
     Serial1.begin(115200);
-    Serial1.println("Radio Serial Port");
+    Serial1.print("Radio OS ");
+    Serial1.print(get_radio_os_version_string(false));
+    Serial1.println(" WA6ZFT");
     // Initialize encoder
     encoder.begin(GPIO_ENCODER_I, GPIO_ENCODER_Q, GPIO_ENCODER_SWITCH, encoder_callback);
     // Initialize display
@@ -122,12 +126,7 @@ void two_mS() {
             error_missing_eeprom();
         }
         if(!ps.validate_contents()) {
-            ps.format();
-            ps.add_key(KEY_CALIB, sizeof(int32_t));
-            ps.write(KEY_CALIB, (int32_t) CONFIG_DEFAULT_REF_CLK_CAL);
-            ps.add_key(KEY_INIT_FREQ, sizeof(uint32_t));
-            ps.write(KEY_INIT_FREQ, (uint32_t) CONFIG_DEFAULT_BAND_INITIAL_FREQUENCY_0);
-            ps.commit();
+            console.set_factory_defaults();
         }
 
 
@@ -161,3 +160,16 @@ void two_mS() {
 void encoder_callback(uint8_t event) {
     control.encoder_event(event);
 }
+
+const char *get_radio_os_version_string(bool abbr) {
+    static char version_string[13];
+    if(abbr) {
+        snprintf(version_string, 13, "V %1d.%1d",VERSION_MAJOR, VERSION_MINOR);  
+    }
+    else {
+        snprintf(version_string, 13, "Version %1d.%1d", VERSION_MAJOR, VERSION_MINOR);
+    }
+    return version_string;
+}
+    
+    
