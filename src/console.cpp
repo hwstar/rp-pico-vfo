@@ -12,6 +12,7 @@
  enum {FIND_FIRST_CHAR=0, FIND_FIRST_SPACE};
  enum {PS_PROMPT=0, PS_WAIT_INPUT};
 
+
 /*
 * External classes
 */
@@ -47,12 +48,14 @@ const static char *error_strings[] = {
  static const uint8_t args_none[] = {AT_END};
  static const uint8_t args_single_int[] = {AT_INT, AT_END};
 
+
  bool cal_on(Holder_Type *vars, uint8_t *error_code);
  bool cal_off(Holder_Type *vars, uint8_t *error_code);
  bool cal_set(Holder_Type *vars, uint8_t *error_code);
  bool cal_get(Holder_Type *vars, uint8_t *error_code);
  bool config_set_factory_defaults(Holder_Type *vars, uint8_t *error_code);
  bool info_get_eeprom_layout(Holder_Type *vars, uint8_t *error_code);
+ bool print_help(Holder_Type *vars, uint8_t *error_code);
 
 
  static const Command_Table_Entry_Type cal[] = {
@@ -101,7 +104,8 @@ const static char *error_strings[] = {
 
  static const Command_Table_Entry_Type top[] = {
     {cal, NULL, args_none, "cal"},
-    {config, NULL,args_none, "config"},
+    {config, NULL, args_none, "config"},
+    {NULL, print_help, args_none, "help"},
     {info, NULL, args_none, "info"},
     CTE_END
  };
@@ -170,6 +174,56 @@ const static char *error_strings[] = {
     return true;
  }
 
+ bool print_help_recursive(const Command_Table_Entry_Type * cur_command_table) {
+    // Sanity check
+    if(!cur_command_table) {
+        return false;
+    }
+    while(cur_command_table->next_table || cur_command_table->command) {
+        if(!console.help_kw_stack_push(cur_command_table->keyword)) {
+            return false;
+        }
+        if(cur_command_table->next_table) {
+            // Is a branch in the tree
+            if(!print_help_recursive(cur_command_table->next_table))
+                return false;
+        }
+        else {
+            // Is a leaf in the tree
+            // Print command sequence
+            Serial1.print(console.help_kw_stack_cat());
+            // Print argument types
+            for(int i = 0; cur_command_table->arguments[i] != AT_END; i++) {
+                switch(cur_command_table->arguments[i]) {
+                    case AT_INT:
+                        Serial1.print("<i> ");
+                        break;
+                        
+                    case AT_UINT:
+                        Serial1.print("<u> ");
+                        break;
+                }
+
+            }
+            Serial1.println();
+        }
+        if(!console.help_kw_stack_pop()) 
+            return false;
+        cur_command_table++;
+    }
+
+   return true;
+ }
+
+ bool print_help(Holder_Type *vars, uint8_t *error_code) {
+    char ws[80];
+
+    // Walk the command tree and print each keyword combination
+    Serial1.println();
+    Serial1.println("*** List of valid commands ***");
+    console.help_kw_stack_init(ws, 80);
+    return print_help_recursive(top);
+ }
 
 
 /*
@@ -266,6 +320,62 @@ void Console::set_factory_defaults() {
 
     // Do a RP pico-specific software reset to force everything to reload
     *((volatile uint32_t*)(PPB_BASE + 0x0ED0C)) = 0x5FA0004;
+}
+
+
+bool Console::help_kw_stack_init(char *ws, int size) {
+    if(!ws) {
+        return false;
+    }
+
+    this->_kw_stack_pointer = KW_STACK_SIZE - 1;
+    this->_kw_work_string = ws;
+    this->_kw_work_string[0] = 0;
+    this->_kw_work_string_size = size;
+    return true;
+}
+
+bool Console::help_kw_stack_push(const char *keyword) {
+    if(this->_kw_stack_pointer) {
+        this->_kw_stack[this->_kw_stack_pointer] = keyword;
+        this->_kw_stack[this->_kw_stack_pointer--];
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
+bool Console::help_kw_stack_pop() {
+    if(this->_kw_stack_pointer != (KW_STACK_SIZE - 1)) {
+        this->_kw_stack_pointer++;
+        return true;
+    }
+    return false;
+
+}
+
+char *Console::help_kw_stack_cat() {
+    uint8_t our_sp = (KW_STACK_SIZE - 1);
+    
+    this->_kw_work_string[0] = 0;
+ 
+    while(our_sp != this->_kw_stack_pointer) {
+        int lkw = strlen(this->_kw_stack[our_sp]);
+        int ltot = strlen(this->_kw_work_string);
+        if((lkw + ltot + 1) < (this->_kw_work_string_size - 1)) {
+            // Append the keyword
+            strcat(this->_kw_work_string, this->_kw_stack[our_sp]);
+            // Append a space
+            strcat(this->_kw_work_string, " ");
+            our_sp--;
+        }
+        else {
+            // All of the keywords don't fit in the avialable string size
+            return this->_kw_work_string;
+        }
+    }
+    return this->_kw_work_string;
 }
 
 
