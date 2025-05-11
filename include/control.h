@@ -7,8 +7,9 @@
 #include "pll.h"
 #include "config_default.h"
 #include "persistent_storage.h"
+#include "config_structure.h"
 
-#define MAX_NUM_OF_BANDS 8
+
 #define BAND_TABLE_NAME_SIZE 8
 #define NUMBER_OF_STEP_SIZES 5
 
@@ -34,8 +35,8 @@ class Control {
     void _handle_normal_view(uint8_t event);
     void _handle_menu_view(uint8_t event);
 
-    
-    band_table _band_table[MAX_NUM_OF_BANDS];
+    Band_Info _band_info_table[MAX_NUM_OF_BANDS];
+    band_table _band_table[MAX_NUM_OF_BANDS]; // To be deleted
     const uint16_t _step_size_table[NUMBER_OF_STEP_SIZES] = {10, 100, 500, 1000, 10000};
     uint16_t _tx_timer;
     uint8_t _tx_state;

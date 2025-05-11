@@ -4,6 +4,7 @@
 #include "persistent_storage.h"
 #include "config_default.h"
 #include "config_keys.h"
+#include "config_structure.h"
 
 
 #define CTE_END  {NULL, NULL, NULL, ""}
@@ -51,6 +52,7 @@ const static char *error_strings[] = {
  bool cal_set(Holder_Type *vars, uint8_t *error_code);
  bool cal_get(Holder_Type *vars, uint8_t *error_code);
  bool config_set_factory_defaults(Holder_Type *vars, uint8_t *error_code);
+ bool info_get_eeprom_layout(Holder_Type *vars, uint8_t *error_code);
 
 
  static const Command_Table_Entry_Type cal[] = {
@@ -79,9 +81,28 @@ const static char *error_strings[] = {
 
  };
 
+ static const Command_Table_Entry_Type info_get_eeprom[] = {
+    {NULL, info_get_eeprom_layout, args_none, "layout"},
+    CTE_END
+ };
+
+
+ static const Command_Table_Entry_Type info_get[] = {
+    {info_get_eeprom, NULL, args_none, "eeprom"},
+    CTE_END
+ };
+
+
+ static const Command_Table_Entry_Type info[] = {
+    {info_get, NULL, args_none, "get"},
+    CTE_END
+ };
+
+
  static const Command_Table_Entry_Type top[] = {
     {cal, NULL, args_none, "cal"},
     {config, NULL,args_none, "config"},
+    {info, NULL, args_none, "info"},
     CTE_END
  };
 
@@ -139,6 +160,16 @@ const static char *error_strings[] = {
     Serial1.println(ppb);
     return true;
  }
+
+ /*
+ * Info commands
+ */
+
+ bool info_get_eeprom_layout(Holder_Type *vars, uint8_t *error_code) {
+    ps.print_eeprom_info();
+    return true;
+ }
+
 
 
 /*
@@ -216,6 +247,10 @@ void Console::set_factory_defaults() {
     Serial1.println();
     Serial1.println("Setting factory defaults...");
     ps.format();
+
+    // Band Tables
+    // Initialized empty
+    ps.add_key(KEY_BAND_INFO_TABLE, sizeof(Band_Info) * MAX_NUM_OF_BANDS);
 
     // TCXO calibration
     ps.add_key(KEY_CALIB, sizeof(int32_t));

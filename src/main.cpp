@@ -52,6 +52,7 @@ void setup() {
     I2C_ext.begin(); // External I2C bus
     // Initialize debug port
     Serial1.begin(115200);
+    Serial1.println();
     Serial1.print("Radio OS ");
     Serial1.print(get_radio_os_version_string(false));
     Serial1.println(" WA6ZFT");

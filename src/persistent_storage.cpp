@@ -140,14 +140,68 @@ bool PersistentStorage::validate_contents() {
 
 void PersistentStorage::format() {
     StorageHeader *sh = (StorageHeader *) this->_contents;
-
+    // Set all cells to zero
     memset(this->_contents, 0, EEPROM_24CW640_BYTE_COUNT);
+    // Initialize header
     memcpy(sh->header_id, HEADER_ID, strlen(HEADER_ID));
+    // Set storage version
     sh->storage_version = STORAGE_VERSION;
-
+    // Set flags
     this->_dirty = true;
     this->_viable = true;
 }
+
+void PersistentStorage::print_eeprom_info() {
+    uint16_t i = 0;
+    uint16_t index = 0;
+    uint16_t offset = 0;
+    uint16_t size;
+    char *dictionary =  (char *) this->_contents + DICTIONARY_START;
+    uint16_t *offset_table = (uint16_t *) (this->_contents + OFFSET_START);
+
+ 
+
+    StorageHeader *sh = (StorageHeader *) this->_contents;
+    static char ws[128];
+
+    Serial1.println();
+    Serial1.print("Storage format version: ");
+    Serial1.println(sh->storage_version);
+
+    if(!dictionary[i]) {
+        return;
+    }
+    snprintf(ws, 128, "%-32s %-6s %-4s", "Key", "Offset", "Size");
+    Serial1.println(ws);
+    Serial1.println("-------------------------------- ------ ----");
+
+    while(dictionary[i]) {
+        char *key = dictionary + i;
+        if(!*key) {
+            return;
+        }
+        else {
+            size = offset_table[index];
+            snprintf(ws, 128, "%-32s %-6u %-4u", key, offset, size);
+            Serial1.println(ws);
+        }
+        while(dictionary[i]) {
+            i++;
+            // Check to see we don't exceed the size of the dictionary
+            if(i >= DICTIONARY_SIZE) {
+                // No more space in dictionary
+                return;
+            }
+        }
+        offset += size; // Offset to next item
+        index++; // Next index in offset table
+        i++; // Move past nul character to next string in the dictionary
+        
+    }
+}
+ 
+
+
 
 bool PersistentStorage::add_key(const char *key, uint16_t storage_size) {
     uint16_t i,index = 0;
@@ -158,6 +212,13 @@ bool PersistentStorage::add_key(const char *key, uint16_t storage_size) {
         this->_result = false;
         return this->_result;
     }
+
+    // Sanity check
+    if(!key || (storage_size > EEPROM_24CW640_BYTE_COUNT)) {
+        this->_result = false;
+        return this->_result;
+    }
+
     this->_result = true;  
 
     // Look for free space in the dictionary
@@ -208,10 +269,9 @@ bool PersistentStorage::add_key(const char *key, uint16_t storage_size) {
 
     // Place the storage size of the value into the offset table
     offset_table[index] = storage_size;
-    
     // Set dirty flag
     this->_dirty = true;
-
+    // Done
     return this->_result;
 }
 
@@ -220,6 +280,7 @@ bool PersistentStorage::read(const char *key, uint32_t *value) {
         this->_result = false;
         return this->_result;
     }
+    // Sanity check
     if(!key || !value) {
         this->_result = false;
         return this->_result;
@@ -247,8 +308,7 @@ bool PersistentStorage::read(const char *key, uint32_t *value) {
     }
     // Retrieve the value and place it in the memory location supplied by caller
     *value = *(uint32_t *) (this->_contents + DATA_START + data_offset);
-
-
+    // Done
     return this-> _result;
 }
 bool PersistentStorage::read(const char *key, int32_t *value) {  
@@ -256,6 +316,7 @@ bool PersistentStorage::read(const char *key, int32_t *value) {
         this->_result = false;
         return this->_result;
     }
+    // Sanity check
     if(!key || !value) {
         this->_result = false;
         return this->_result;
@@ -283,16 +344,47 @@ bool PersistentStorage::read(const char *key, int32_t *value) {
     }
     // Retrieve the value and place it in the memory location supplied by caller
     *value = *(int32_t *) (this->_contents + DATA_START + data_offset);
-
-
+    // Done
     return this-> _result;
 }
+
+void *PersistentStorage::get_value_pointer(const char *key) {  
+    if(!this->_viable) {
+        return NULL;
+    }
+    // Sanity check
+    if(!key) {
+        return NULL;
+    }
+    this->_result = true;
+    // Find the index from the key
+    uint16_t index;
+    if(!this->_find_index_by_key(key, &index)) {
+        return NULL;
+    }
+
+    
+    // Retreive the offset into the block of data
+    uint16_t data_offset;
+    
+    if(!this->_get_offset(index, &data_offset)) {
+        return NULL;
+    }
+    // Copy the value and place it in the memory locations supplied by caller
+    uint8_t *res = (uint8_t *) this->_contents + DATA_START + data_offset;
+    // Done
+    return res;
+}
+
+
+
 
 bool PersistentStorage::write(const char *key, uint32_t value) {
     if(!this->_viable) {
         this->_result = false;
         return this->_result;
     }
+    // Sanity check
     if(!key) {
         this->_result = false;
         return this->_result;
@@ -324,7 +416,7 @@ bool PersistentStorage::write(const char *key, uint32_t value) {
 
     // Set the dirty bit
     this->_dirty = true;
-
+    // Done
     return this->_result;
 }
 
@@ -334,6 +426,7 @@ bool PersistentStorage::write(const char *key, int32_t value) {
         this->_result = false;
         return this->_result;
     }
+    // Sanity check
     if(!key) {
         this->_result = false;
         return this->_result;
@@ -365,11 +458,10 @@ bool PersistentStorage::write(const char *key, int32_t value) {
 
     // Set the dirty bit
     this->_dirty = true;
-
+    // Done
     return this->_result;
-
-
 }
+
 
 bool PersistentStorage::commit() {
     if(!this->_viable) {

@@ -3,9 +3,10 @@
 #include "display.h"
 #include "menu.h"
 #include "gpio.h"
-#include "config_default.h"
 #include "persistent_storage.h"
+#include "config_default.h"
 #include "config_keys.h"
+#include "config_structure.h"
 
 
 // Enums
