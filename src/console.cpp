@@ -47,7 +47,8 @@ const static char *error_strings[] = {
  */
  static const uint8_t args_none[] = {AT_END};
  static const uint8_t args_single_int[] = {AT_INT, AT_END};
-
+ static const uint8_t args_single_unsigned[] = {AT_UINT, AT_END};
+ static const uint8_t args_double_unsigned[] = {AT_UINT, AT_UINT, AT_END};
 
  bool cal_on(Holder_Type *vars, uint8_t *error_code);
  bool cal_off(Holder_Type *vars, uint8_t *error_code);
@@ -55,7 +56,13 @@ const static char *error_strings[] = {
  bool cal_get(Holder_Type *vars, uint8_t *error_code);
  bool config_set_factory_defaults(Holder_Type *vars, uint8_t *error_code);
  bool info_get_eeprom_layout(Holder_Type *vars, uint8_t *error_code);
+ bool info_get_band(Holder_Type *vars, uint8_t *error_code);
  bool print_help(Holder_Type *vars, uint8_t *error_code);
+ bool config_set_band_disable(Holder_Type *vars, uint8_t *error_code);
+ bool config_set_band_enable(Holder_Type *vars, uint8_t *error_code);
+ bool config_set_band_start(Holder_Type *vars, uint8_t *error_code);
+ bool config_set_band_stop(Holder_Type *vars, uint8_t *error_code);
+ bool config_eeprom_save(Holder_Type *vars, uint8_t *error_code);
 
 
  static const Command_Table_Entry_Type cal[] = {
@@ -72,14 +79,31 @@ const static char *error_strings[] = {
 
  };
 
+ static const Command_Table_Entry_Type config_set_band[] = {
+    { NULL, config_set_band_disable, args_single_unsigned, "disable"},
+    { NULL, config_set_band_enable, args_single_unsigned, "enable"},
+
+    { NULL, config_set_band_start, args_double_unsigned, "start"},
+    { NULL, config_set_band_stop, args_double_unsigned, "stop"},
+    CTE_END
+ };
+
  static const Command_Table_Entry_Type config_set[] = {
     {config_set_factory, NULL, args_single_int, "factory"},
+    {config_set_band, NULL, args_none, "band"},
     CTE_END
 
  };
 
+ static const Command_Table_Entry_Type config_eeprom[] = {
+    {NULL, config_eeprom_save, args_none, "save"},
+    CTE_END
+ };
+ 
+
  static const Command_Table_Entry_Type config[] = {
-    {config_set, NULL, args_single_int, "set"},
+    {config_set, NULL, args_none, "set"},
+    {config_eeprom, NULL, args_single_int, "eeprom"},
     CTE_END
 
  };
@@ -92,6 +116,7 @@ const static char *error_strings[] = {
 
  static const Command_Table_Entry_Type info_get[] = {
     {info_get_eeprom, NULL, args_none, "eeprom"},
+    {NULL, info_get_band, args_single_unsigned, "band"},
     CTE_END
  };
 
@@ -174,6 +199,37 @@ const static char *error_strings[] = {
     return true;
  }
 
+ Band_Info *get_band_info_pointer(uint32_t band) {
+    return ((Band_Info *) ps.get_value_pointer(KEY_BAND_INFO_TABLE)) + band;
+}
+
+const char *bool_to_yes_no(bool state) {
+    return state ? "YES" : "NO";
+}
+
+ bool info_get_band(Holder_Type *vars, uint8_t *error_code) {
+    uint32_t band = vars->uint;
+    
+    // Validate band
+    if((band < 1) || (band > 8)) {
+        return false;
+    }
+    // Change band number to to 0-7 range
+    band--;
+    // Point to the correct band table
+    Band_Info *bi = get_band_info_pointer(band);
+    char ws[80];
+    ws[79] = 0;
+    Serial1.println();
+    snprintf(ws, 79, "%-20s : %-7s","Band Enabled", bool_to_yes_no((bi->flags & BAND_FLAG_ACTIVE) != 0));
+    Serial1.println(ws);
+    snprintf(ws, 79, "%-20s : %-7lu","Band Start", bi->lower_limit);
+    Serial1.println(ws);
+    snprintf(ws, 79, "%-20s : %-7lu","Band Stop", bi->upper_limit);
+    Serial1.println(ws);
+    return true;
+ }
+
  bool print_help_recursive(const Command_Table_Entry_Type * cur_command_table) {
     // Sanity check
     if(!cur_command_table) {
@@ -224,6 +280,87 @@ const static char *error_strings[] = {
     console.help_kw_stack_init(ws, 80);
     return print_help_recursive(top);
  }
+
+bool validate_band_start_stop(uint32_t band, uint32_t freq) {
+    if((freq < 1800000) || (freq > 30000000))
+        return false;
+    if((band < 1) || (band > 8)) {
+        return false;
+    }
+    return true;
+}
+
+bool validate_band_number(uint32_t band) {
+    if((band < 1) || (band > 8)) {
+        return false;
+    }
+    return true;
+}
+
+bool config_set_band_start(Holder_Type *vars, uint8_t *error_code) {
+    uint32_t band = vars[0].uint;
+    uint32_t start_freq_hz = vars[1].uint;
+    if(!validate_band_start_stop(band, start_freq_hz)) {
+        return false;
+    }
+    band--; // Change band number to to 0-7 range
+    Band_Info *bi = get_band_info_pointer(band);
+    // Set the lower limit of the band 
+    bi->lower_limit = start_freq_hz;
+    // Flag that a write to the eeprom is required
+    ps.force_dirty();
+    return true;
+}
+
+bool config_set_band_stop(Holder_Type *vars, uint8_t *error_code) {
+    uint32_t band = vars[0].uint;
+    uint32_t stop_freq_hz = vars[1].uint;
+    if(!validate_band_start_stop(band, stop_freq_hz)) {
+        return false;
+    }
+    band--; // Change band number to to 0-7 range
+    Band_Info *bi = get_band_info_pointer(band);
+    // Set the upper limit of the band
+    bi->upper_limit = stop_freq_hz;
+    ps.force_dirty();
+    // Flag that a write to the eeprom is required 
+    return true;
+}
+
+bool config_set_band_disable(Holder_Type *vars, uint8_t *error_code) {
+    uint32_t band = vars->uint;
+    if(!validate_band_number(band))
+        return false;
+    band--;
+
+    Band_Info *bi = get_band_info_pointer(band);
+
+    bi->flags &= ~BAND_FLAG_ACTIVE;
+    ps.force_dirty();
+
+    return true;
+}
+
+bool config_set_band_enable(Holder_Type *vars, uint8_t *error_code){
+    uint32_t band = vars->uint;
+    if(!validate_band_number(band))
+        return false;
+    band--;
+    
+    Band_Info *bi = get_band_info_pointer(band);
+
+    bi->flags |= BAND_FLAG_ACTIVE;
+    ps.force_dirty();
+    
+    return true;
+}
+
+bool config_eeprom_save(Holder_Type *vars, uint8_t *error_code) {
+    // Write RAM to EEPROM if necessary
+    ps.commit();
+    return true;
+}
+
 
 
 /*
