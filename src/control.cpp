@@ -1,4 +1,4 @@
-
+#include "error_handler.h"
 #include "control.h"
 #include "display.h"
 #include "menu.h"
@@ -18,6 +18,7 @@ extern Control control;
 extern Pll pll;
 extern Display display;
 extern PersistentStorage ps;
+extern Error_Handler error_handler;
 
 // Variables
 bool agc_state = CONFIG_INITIAL_AGC;
@@ -169,9 +170,6 @@ void at_menu_exit() {
     ps.commit();
 }
 
-
-
-
 // Control class
 
 void Control::begin() {
@@ -216,12 +214,26 @@ void Control::tick() {
 
 void Control::release() {
     // Initialization
+    uint8_t band;
     Band_Info *band_info = (Band_Info *) ps.get_value_pointer(KEY_BAND_INFO_TABLE);
     
-    this->_step_size_index = 3; // FIXME
-    this->_current_band = 0; // FIXME
-    this->_tune_freq_hz = 7255000;  // FIXME 
-    bool mode = false; // FIXME
+    // Find first enabled band
+    for(band = 0; band < MAX_NUM_OF_BANDS; band++) {
+        if(band_info->flags & BAND_FLAG_ACTIVE) {
+            break;
+        }
+    }
+    if(band == MAX_NUM_OF_BANDS) {
+        error_handler.post(ERROR_NO_BANDS_ENABLED);
+        return;
+    }
+
+
+    this->_step_size_index = CONFIG_DEFAULT_STEP_SIZE_INDEX;
+    this->_current_band = CONFIG_DEFAULT_INITIAL_BAND_INDEX;
+    this->_tune_freq_hz = ((band_info->upper_limit + band_info->lower_limit) / 2); // Set freq to band midpoint
+    this->_tune_freq_hz = this->_tune_freq_hz - (this->_tune_freq_hz % 1000); // Select and even kHz boundary
+   
 
     // Setup
    
@@ -229,6 +241,7 @@ void Control::release() {
     display.update_freq(this->_tune_freq_hz);
     display.update_tx(this->_is_transmitting, this->_tune_mode);
    
+    bool mode = (band_info->flags & BAND_FLAG_MODE_USB) > 0;
     pll.set_usb_mode(mode);
     display.update_sideband(mode);
     

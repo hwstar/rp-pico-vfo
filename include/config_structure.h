@@ -4,7 +4,8 @@
 
 #define BAND_FLAG_ACTIVE 1
 #define BAND_FLAG_CHANNELIZED_ONLY 2
-#define BAND_FLAG_NO_MODE_SWITCH 4
+#define BAND_FLAG_MODE_USB 4
+#define BAND_FLAG_NO_MODE_SWITCH 8
 
 typedef struct Band_Info {
     // Must be 64 bytes

@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <Ticker.h>
 #include <Wire.h>
+#include "error_handler.h"
 #include "gpio.h"
 #include "24cw640.h"
 #include "persistent_storage.h"
@@ -25,6 +26,7 @@ const char *get_radio_os_version_string(bool abbr);
 /* Class Instatiations */
 
 Ticker ticker(two_mS, 2, 0, MILLIS);
+Error_Handler error_handler;
 Display display;
 Pll pll;
 Control control;
@@ -86,45 +88,30 @@ void loop() {
     console.poll();
 }
 
-/*
-* Display missing eeprom error
-*/
-
-void error_missing_eeprom() {
-    display.clear_view(VIEW_SPECIAL);
-    display.printf(0, 0, 6, "ERROR:");
-    display.printf(1, 0, 14, "EEPROM MISSING");
-    for(;;){
-        display.update();
-    }
-
-}
-
-/*
-* Display missing SI5351 error
-*/
-
-void error_missing_si5351() {
-    display.clear_view(VIEW_SPECIAL);
-    display.printf(0, 0, 6, "ERROR:");
-    display.printf(1, 0, 14, "MISSING SI5351");
-    for(;;){
-        display.update();
-    }
-
-}
 
 /* This gets called every 2 milliseconds on average */
 
 void two_mS() {
     static bool initialized = false;
     ms_ticks++;
-    control.tick();
+
+   
+   
+    // Don't proceed further if hard fault posted
+
+    if(error_handler.hard_error_posted()) {
+        return;
+    }
+
     encoder.tick();
+    control.tick();
+
+
     if(!initialized && (ms_ticks == 2500)){ // Display boot up banner displays for 5 seconds
         // Try to read in the contents of the eeprom I2C device
         if(!ps.begin(&eeprom)) {
-            error_missing_eeprom();
+            error_handler.post(ERROR_MISSING_EEPROM);
+            return;
         }
         if(!ps.validate_contents()) {
             // EEPROM invalid. Set factory defaults
@@ -141,7 +128,8 @@ void two_mS() {
         res = ps.read(KEY_CALIB, &calibration_value);
         res = pll.begin(&I2C_int, radio_info->ref_clk_freq, radio_info->if_zero_hz_freq, 10000000, calibration_value);
         if(!res) {
-            error_missing_si5351();
+            error_handler.post(ERROR_MISSING_SI5351);
+            return;
         }
       
 
