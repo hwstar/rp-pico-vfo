@@ -17,5 +17,25 @@ typedef struct Band_Info {
     uint8_t pad[36];
 } Band_Info;
 
-static_assert(sizeof(Band_Info) == 64, "Data structure doesn't match page size");
+static_assert(sizeof(Band_Info) == 64, "Band_Info data structure doesn't match page size");
 
+typedef struct Radio_Info {
+    uint32_t if_zero_hz_freq;
+    uint32_t ref_clk_freq;
+    uint8_t pad[56];
+} Radio_Info;
+
+static_assert(sizeof(Radio_Info) == 64, "Radio_Info Data structure doesn't match page size");
+
+typedef struct Channel {
+    uint32_t freq;
+    uint32_t flags;
+    uint8_t pad[8];
+} Channel;
+
+typedef struct Channel_Info {
+    uint32_t channel_enables;
+    Channel channel[32];
+} Channel_Info;
+
+static_assert(sizeof(Channel_Info) == 516, "Channel_Info Data structure doesn't match page size");

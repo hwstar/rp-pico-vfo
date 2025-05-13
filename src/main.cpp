@@ -127,6 +127,7 @@ void two_mS() {
             error_missing_eeprom();
         }
         if(!ps.validate_contents()) {
+            // EEPROM invalid. Set factory defaults
             console.set_factory_defaults();
         }
 
@@ -134,10 +135,11 @@ void two_mS() {
 
         // Initialize PLL 
         // See config_default.h for constants 
+        Radio_Info *radio_info = (Radio_Info *) ps.get_value_pointer(KEY_RADIO_CONFIG);
         int32_t calibration_value;
         bool res;
         res = ps.read(KEY_CALIB, &calibration_value);
-        res = pll.begin(&I2C_int, CONFIG_DEFAULT_REF_CLK_FREQ, CONFIG_DEFAULT_IF_ZERO_HZ_FREQ, 10000000, CONFIG_DEFAULT_REF_CLK_CAL);
+        res = pll.begin(&I2C_int, radio_info->ref_clk_freq, radio_info->if_zero_hz_freq, 10000000, calibration_value);
         if(!res) {
             error_missing_si5351();
         }

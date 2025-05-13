@@ -216,27 +216,23 @@ void Control::tick() {
 
 void Control::release() {
     // Initialization
-    this->_step_size_index = CONFIG_DEFAULT_STEP_SIZE_INDEX;
-    this->_current_band = CONFIG_DEFAULT_INITIAL_BAND_INDEX;
-
-    // Initialize band table
-    #ifdef CONFIG_DEFAULT_BAND_NAME_0
-    strncpy(this->_band_table[0].name, CONFIG_DEFAULT_BAND_NAME_0, BAND_TABLE_NAME_SIZE);
-    this->_band_table[0].lower_limit = CONFIG_DEFAULT_BAND_LOWER_LIMIT_HZ_0;
-    this->_band_table[0].upper_limit = CONFIG_DEFAULT_BAND_UPPER_LIMIT_HZ_0;
-    ps.read(KEY_INIT_FREQ, &this->_band_table[0].tune_freq_hz);
-    this->_band_table[0].sideband = CONFIG_DEFAULT_BAND_SIDEBAND_0;
-    #endif
+    Band_Info *band_info = (Band_Info *) ps.get_value_pointer(KEY_BAND_INFO_TABLE);
+    
+    this->_step_size_index = 3; // FIXME
+    this->_current_band = 0; // FIXME
+    this->_tune_freq_hz = 7255000;  // FIXME 
+    bool mode = false; // FIXME
 
     // Setup
-    pll.set_freq(this->_band_table[this->_current_band].tune_freq_hz);
-    display.update_freq(this->_band_table[this->_current_band].tune_freq_hz);
+   
+    pll.set_freq(this->_tune_freq_hz);
+    display.update_freq(this->_tune_freq_hz);
     display.update_tx(this->_is_transmitting, this->_tune_mode);
-    bool mode = this->_band_table[this->_current_band].sideband;
+   
     pll.set_usb_mode(mode);
     display.update_sideband(mode);
     
-    display.update_band_name(this->_band_table[this->_current_band].name);
+    display.update_band_name(band_info->name);
     display.update_agc(this->_agc_enabled);
     display.update_tune_step_size(this->_step_size_table[this->_step_size_index]);
 
@@ -345,27 +341,28 @@ void Control::_every_ms10() {
 
 void Control::_handle_normal_view(uint8_t event) {
     uint16_t step_size = this->_step_size_table[this->_step_size_index];
-    band_table *current_band = &this->_band_table[this->_current_band];
+    Band_Info *band_info = (Band_Info *) ps.get_value_pointer(KEY_BAND_INFO_TABLE);
+
     switch(event) {
        
         case ENCODER_SWITCH_FORWARD: /* Rotation in forward direction */
             /* Test band upper limit */
-            if(current_band->tune_freq_hz + step_size <= current_band->upper_limit) {
+            if(this->_tune_freq_hz + step_size <= band_info->upper_limit) {
                 /* Will still be in band, so increase tune freq by the step size and update everything */
-                current_band->tune_freq_hz += step_size;
-                display.update_freq(current_band->tune_freq_hz);
-                pll.set_freq(current_band->tune_freq_hz);
+                this->_tune_freq_hz += step_size;
+                display.update_freq(this->_tune_freq_hz);
+                pll.set_freq(this->_tune_freq_hz);
             }
 
             break;
 
         case ENCODER_SWITCH_REVERSE: /* Rotation in reverse direction */
             /* Test band lower limit */
-            if(current_band->tune_freq_hz - step_size >= current_band->lower_limit) {
+            if(this->_tune_freq_hz - step_size >= band_info->lower_limit) {
                 /* Will still be in band, so decrease tune freq by the step size and update everything */
-                current_band->tune_freq_hz -= step_size;
-                display.update_freq(current_band->tune_freq_hz);
-                pll.set_freq(current_band->tune_freq_hz);
+                this->_tune_freq_hz -= step_size;
+                display.update_freq(this->_tune_freq_hz);
+                pll.set_freq(this->_tune_freq_hz);
             }
             break;
 

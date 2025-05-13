@@ -198,6 +198,17 @@ void PersistentStorage::print_eeprom_info() {
         i++; // Move past nul character to next string in the dictionary
         
     }
+    uint16_t variable_space_total = DATA_SIZE;
+    uint16_t variable_space_used = 0;
+    // Sum all lengths in offset table
+    for(i = 0; i < OFFSET_COUNT; i++) {
+        if(i == index) {
+            break;
+        }
+        variable_space_used += offset_table[i];
+    }
+    snprintf(ws, 128, "Variable space used: %d/%d bytes", variable_space_used, variable_space_total);
+    Serial1.println(ws);
 }
  
 

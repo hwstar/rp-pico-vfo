@@ -49,22 +49,31 @@ const static char *error_strings[] = {
  static const uint8_t args_single_int[] = {AT_INT, AT_END};
  static const uint8_t args_single_unsigned[] = {AT_UINT, AT_END};
  static const uint8_t args_double_unsigned[] = {AT_UINT, AT_UINT, AT_END};
+ static const uint8_t args_unsigned_string[] = {AT_UINT, AT_STR32, AT_END};
 
- bool cal_on(Holder_Type *vars, uint8_t *error_code);
- bool cal_off(Holder_Type *vars, uint8_t *error_code);
- bool cal_set(Holder_Type *vars, uint8_t *error_code);
- bool cal_get(Holder_Type *vars, uint8_t *error_code);
- bool config_set_factory_defaults(Holder_Type *vars, uint8_t *error_code);
- bool info_get_eeprom_layout(Holder_Type *vars, uint8_t *error_code);
- bool info_get_band(Holder_Type *vars, uint8_t *error_code);
- bool print_help(Holder_Type *vars, uint8_t *error_code);
- bool config_set_band_disable(Holder_Type *vars, uint8_t *error_code);
- bool config_set_band_enable(Holder_Type *vars, uint8_t *error_code);
- bool config_set_band_start(Holder_Type *vars, uint8_t *error_code);
- bool config_set_band_stop(Holder_Type *vars, uint8_t *error_code);
- bool config_eeprom_save(Holder_Type *vars, uint8_t *error_code);
+ // Forward declarations for command handlers
+ static bool cal_on(Holder_Type *vars, uint8_t *error_code);
+ static bool cal_off(Holder_Type *vars, uint8_t *error_code);
+ static bool cal_set(Holder_Type *vars, uint8_t *error_code);
+ static bool cal_get(Holder_Type *vars, uint8_t *error_code);
+ static bool config_set_factory_defaults(Holder_Type *vars, uint8_t *error_code);
+ static bool info_get_eeprom_layout(Holder_Type *vars, uint8_t *error_code);
+ static bool info_get_band(Holder_Type *vars, uint8_t *error_code);
+ static bool info_get_radio_config (Holder_Type *vars, uint8_t *error_code);
+ static bool print_help(Holder_Type *vars, uint8_t *error_code);
+ static bool config_set_band_disable(Holder_Type *vars, uint8_t *error_code);
+ static bool config_set_band_enable(Holder_Type *vars, uint8_t *error_code);
+ static bool config_set_band_start(Holder_Type *vars, uint8_t *error_code);
+ static bool config_set_band_stop(Holder_Type *vars, uint8_t *error_code);
+ static bool config_set_band_stop(Holder_Type *vars, uint8_t *error_code);
+ static bool config_set_band_name(Holder_Type *vars, uint8_t *error_code);
+ static bool config_set_radio_if(Holder_Type *vars, uint8_t *error_code);
+ static bool config_set_radio_refosc(Holder_Type *vars, uint8_t *error_code);
 
+ static bool config_eeprom_save(Holder_Type *vars, uint8_t *error_code);
+ static bool reboot(Holder_Type *vars, uint8_t *error_code);
 
+ // Calibration command table
  static const Command_Table_Entry_Type cal[] = {
     {NULL, cal_on, args_none, "on"},
     {NULL, cal_off, args_none, "off"},
@@ -73,65 +82,88 @@ const static char *error_strings[] = {
     CTE_END
  };
 
+ // Set factory defaults table
  static const Command_Table_Entry_Type config_set_factory[] = {
     { NULL, config_set_factory_defaults, args_none, "defaults"},
     CTE_END
 
  };
 
+ // Set band configuration table
  static const Command_Table_Entry_Type config_set_band[] = {
     { NULL, config_set_band_disable, args_single_unsigned, "disable"},
     { NULL, config_set_band_enable, args_single_unsigned, "enable"},
-
+    { NULL, config_set_band_name, args_unsigned_string, "name"},
     { NULL, config_set_band_start, args_double_unsigned, "start"},
     { NULL, config_set_band_stop, args_double_unsigned, "stop"},
     CTE_END
  };
 
- static const Command_Table_Entry_Type config_set[] = {
-    {config_set_factory, NULL, args_single_int, "factory"},
-    {config_set_band, NULL, args_none, "band"},
+ static const Command_Table_Entry_Type config_set_radio[] = {
+    {NULL, config_set_radio_if, args_single_unsigned, "if"},
+    {NULL, config_set_radio_refosc, args_single_unsigned, "refosc"},
     CTE_END
+
 
  };
 
+
+ // Configuration set table
+ static const Command_Table_Entry_Type config_set[] = {
+    {config_set_band, NULL, args_none, "band"},
+    {config_set_factory, NULL, args_single_int, "factory"},
+    {config_set_radio, NULL, args_single_int, "radio"},
+    
+
+    CTE_END
+
+ };
+ // EEprom table
  static const Command_Table_Entry_Type config_eeprom[] = {
     {NULL, config_eeprom_save, args_none, "save"},
     CTE_END
  };
  
-
+ // Config table
  static const Command_Table_Entry_Type config[] = {
     {config_set, NULL, args_none, "set"},
     {config_eeprom, NULL, args_single_int, "eeprom"},
     CTE_END
 
  };
-
+ // Info get eeprom table
  static const Command_Table_Entry_Type info_get_eeprom[] = {
     {NULL, info_get_eeprom_layout, args_none, "layout"},
     CTE_END
  };
 
+// Radio config get table
+static const Command_Table_Entry_Type info_get_radio[] = {
+    {NULL, info_get_radio_config, args_none, "config"},
+    CTE_END
+};
 
+ // Info get table
  static const Command_Table_Entry_Type info_get[] = {
+    {info_get_radio, NULL, args_none, "radio"},
     {info_get_eeprom, NULL, args_none, "eeprom"},
     {NULL, info_get_band, args_single_unsigned, "band"},
     CTE_END
  };
 
-
+ // Info table
  static const Command_Table_Entry_Type info[] = {
     {info_get, NULL, args_none, "get"},
     CTE_END
  };
 
-
+ // Top table
  static const Command_Table_Entry_Type top[] = {
     {cal, NULL, args_none, "cal"},
     {config, NULL, args_none, "config"},
     {NULL, print_help, args_none, "help"},
     {info, NULL, args_none, "info"},
+    {NULL,reboot, args_none,"reboot"},
     CTE_END
  };
 
@@ -139,35 +171,25 @@ const static char *error_strings[] = {
 * Config commands 
 */
 
- bool config_set_factory_defaults(Holder_Type *vars, uint8_t *error_code) {
-
-    if(console.confirm_action("Reset everything to factory defaults?")) {
-        console.set_factory_defaults();
-    }
-
-    return true;
- }
- 
-
  /*
  * Calibrate commands
  */
 
- bool cal_on(Holder_Type *vars, uint8_t *error_code) {
+ static bool cal_on(Holder_Type *vars, uint8_t *error_code) {
     in_cal = true;
     pll.cal_mode(true);
     return true;
 
  }
 
- bool cal_off(Holder_Type *vars, uint8_t *error_code) {
+ static bool cal_off(Holder_Type *vars, uint8_t *error_code) {
     pll.cal_mode(false);
     ps.commit();
     in_cal = false;
     return true;
  }
 
- bool cal_set(Holder_Type *vars, uint8_t *error_code) {
+ static bool cal_set(Holder_Type *vars, uint8_t *error_code) {
     if(!in_cal) {
         *error_code = CEC_SETUP_ERROR;
         return false;
@@ -182,7 +204,7 @@ const static char *error_strings[] = {
     return true;
  }
 
- bool cal_get(Holder_Type *vars, uint8_t *error_code) {
+ static bool cal_get(Holder_Type *vars, uint8_t *error_code) {
     int32_t ppb;
     ps.read(KEY_CALIB, &ppb);
     Serial1.println();
@@ -193,21 +215,21 @@ const static char *error_strings[] = {
  /*
  * Info commands
  */
-
- bool info_get_eeprom_layout(Holder_Type *vars, uint8_t *error_code) {
+ 
+ static bool info_get_eeprom_layout(Holder_Type *vars, uint8_t *error_code) {
     ps.print_eeprom_info();
     return true;
  }
 
- Band_Info *get_band_info_pointer(uint32_t band) {
+ static Band_Info *get_band_info_pointer(uint32_t band) {
     return ((Band_Info *) ps.get_value_pointer(KEY_BAND_INFO_TABLE)) + band;
 }
 
-const char *bool_to_yes_no(bool state) {
+ static const char *bool_to_yes_no(bool state) {
     return state ? "YES" : "NO";
 }
 
- bool info_get_band(Holder_Type *vars, uint8_t *error_code) {
+ static bool info_get_band(Holder_Type *vars, uint8_t *error_code) {
     uint32_t band = vars->uint;
     
     // Validate band
@@ -221,16 +243,32 @@ const char *bool_to_yes_no(bool state) {
     char ws[80];
     ws[79] = 0;
     Serial1.println();
-    snprintf(ws, 79, "%-20s : %-7s","Band Enabled", bool_to_yes_no((bi->flags & BAND_FLAG_ACTIVE) != 0));
+    snprintf(ws, 79, "%-32s : %-8s","Band Name", bi->name);
     Serial1.println(ws);
-    snprintf(ws, 79, "%-20s : %-7lu","Band Start", bi->lower_limit);
+    snprintf(ws, 79, "%-32s : %-7s","Band Enabled", bool_to_yes_no((bi->flags & BAND_FLAG_ACTIVE) != 0));
     Serial1.println(ws);
-    snprintf(ws, 79, "%-20s : %-7lu","Band Stop", bi->upper_limit);
+    snprintf(ws, 79, "%-32s : %-7lu","Band Start", bi->lower_limit);
+    Serial1.println(ws);
+    snprintf(ws, 79, "%-32s : %-7lu","Band Stop", bi->upper_limit);
     Serial1.println(ws);
     return true;
  }
 
- bool print_help_recursive(const Command_Table_Entry_Type * cur_command_table) {
+ static bool info_get_radio_config (Holder_Type *vars, uint8_t *error_code) {
+    char ws[80];
+    Radio_Info *ri = (Radio_Info *) ps.get_value_pointer(KEY_RADIO_CONFIG);
+    ws[79] = 0;
+    Serial1.println();
+    snprintf(ws, 79, "%-32s : %-7lu", "IF Zero Hz Frequency", ri->if_zero_hz_freq);
+    Serial1.println(ws);
+    snprintf(ws, 79, "%-32s : %-7lu", "Reference Clock Frequency", ri->ref_clk_freq);
+    Serial1.println(ws);
+    return true;
+ }
+
+
+
+ static bool print_help_recursive(const Command_Table_Entry_Type * cur_command_table) {
     // Sanity check
     if(!cur_command_table) {
         return false;
@@ -252,12 +290,17 @@ const char *bool_to_yes_no(bool state) {
             for(int i = 0; cur_command_table->arguments[i] != AT_END; i++) {
                 switch(cur_command_table->arguments[i]) {
                     case AT_INT:
-                        Serial1.print("<i> ");
+                        Serial1.print("<int> ");
                         break;
                         
                     case AT_UINT:
-                        Serial1.print("<u> ");
+                        Serial1.print("<uint> ");
                         break;
+
+                    case AT_STR32:
+                        Serial1.print("<str> ");
+                        break;
+
                 }
 
             }
@@ -271,7 +314,7 @@ const char *bool_to_yes_no(bool state) {
    return true;
  }
 
- bool print_help(Holder_Type *vars, uint8_t *error_code) {
+ static bool print_help(Holder_Type *vars, uint8_t *error_code) {
     char ws[80];
 
     // Walk the command tree and print each keyword combination
@@ -281,7 +324,7 @@ const char *bool_to_yes_no(bool state) {
     return print_help_recursive(top);
  }
 
-bool validate_band_start_stop(uint32_t band, uint32_t freq) {
+static bool validate_band_start_stop(uint32_t band, uint32_t freq) {
     if((freq < 1800000) || (freq > 30000000))
         return false;
     if((band < 1) || (band > 8)) {
@@ -290,14 +333,79 @@ bool validate_band_start_stop(uint32_t band, uint32_t freq) {
     return true;
 }
 
-bool validate_band_number(uint32_t band) {
+static bool validate_band_number(uint32_t band) {
     if((band < 1) || (band > 8)) {
         return false;
     }
     return true;
 }
 
-bool config_set_band_start(Holder_Type *vars, uint8_t *error_code) {
+/*
+* Config set commands
+*/
+
+static bool config_set_factory_defaults(Holder_Type *vars, uint8_t *error_code) {
+
+    if(console.confirm_action("Reset everything to factory defaults?")) {
+        console.set_factory_defaults();
+    }
+
+    return true;
+ }
+ 
+
+
+static bool config_set_band_name(Holder_Type *vars, uint8_t *error_code) {
+    uint32_t band = vars[0].uint;
+    char *name = vars[1].str32;
+    if(strlen(name) > 3) {
+        return false;
+    }
+    band--; // Change band number to to 0-7 range
+    Band_Info *bi = get_band_info_pointer(band);
+    // Copy the string to the EEProm shadow RAM
+    bi->name[7] = 0;
+    strncpy(bi->name, name, 7);
+    // Flag that a write to the eeprom is required
+    ps.force_dirty();
+
+    return true;
+}
+
+static bool config_set_radio_if(Holder_Type *vars, uint8_t *error_code) {
+    uint32_t if_zero_hz_freq = vars[0].uint;
+    if(if_zero_hz_freq < 3000000 || if_zero_hz_freq > 15000000) {
+        return false;
+    }
+   
+   
+    Radio_Info *ri = (Radio_Info *) ps.get_value_pointer(KEY_RADIO_CONFIG);
+    // Set the IF frequency
+    ri->if_zero_hz_freq = if_zero_hz_freq; 
+    
+    // Flag that a write to the eeprom is required
+    ps.force_dirty();
+    return true;
+}
+static bool config_set_radio_refosc(Holder_Type *vars, uint8_t *error_code) {
+    uint32_t ref_clk_freq = vars[0].uint;
+    if(ref_clk_freq < 25000000 || ref_clk_freq > 27000000) {
+        return false;
+    }
+   
+    Radio_Info *ri = (Radio_Info *) ps.get_value_pointer(KEY_RADIO_CONFIG);
+    // Set the IF frequency
+    ri->ref_clk_freq = ref_clk_freq; 
+    
+    // Flag that a write to the eeprom is required
+    ps.force_dirty();
+
+    return true;
+
+}
+
+
+static bool config_set_band_start(Holder_Type *vars, uint8_t *error_code) {
     uint32_t band = vars[0].uint;
     uint32_t start_freq_hz = vars[1].uint;
     if(!validate_band_start_stop(band, start_freq_hz)) {
@@ -312,7 +420,7 @@ bool config_set_band_start(Holder_Type *vars, uint8_t *error_code) {
     return true;
 }
 
-bool config_set_band_stop(Holder_Type *vars, uint8_t *error_code) {
+static bool config_set_band_stop(Holder_Type *vars, uint8_t *error_code) {
     uint32_t band = vars[0].uint;
     uint32_t stop_freq_hz = vars[1].uint;
     if(!validate_band_start_stop(band, stop_freq_hz)) {
@@ -327,7 +435,7 @@ bool config_set_band_stop(Holder_Type *vars, uint8_t *error_code) {
     return true;
 }
 
-bool config_set_band_disable(Holder_Type *vars, uint8_t *error_code) {
+static bool config_set_band_disable(Holder_Type *vars, uint8_t *error_code) {
     uint32_t band = vars->uint;
     if(!validate_band_number(band))
         return false;
@@ -341,7 +449,7 @@ bool config_set_band_disable(Holder_Type *vars, uint8_t *error_code) {
     return true;
 }
 
-bool config_set_band_enable(Holder_Type *vars, uint8_t *error_code){
+static bool config_set_band_enable(Holder_Type *vars, uint8_t *error_code){
     uint32_t band = vars->uint;
     if(!validate_band_number(band))
         return false;
@@ -355,13 +463,16 @@ bool config_set_band_enable(Holder_Type *vars, uint8_t *error_code){
     return true;
 }
 
-bool config_eeprom_save(Holder_Type *vars, uint8_t *error_code) {
+static bool config_eeprom_save(Holder_Type *vars, uint8_t *error_code) {
     // Write RAM to EEPROM if necessary
     ps.commit();
     return true;
 }
 
-
+static bool reboot(Holder_Type *vars, uint8_t *error_code) {
+    console.rp_specific_reboot();
+    return true;
+}
 
 /*
 * Console class methods
@@ -433,6 +544,11 @@ bool Console::confirm_action(const char *query_string) {
     return false;
 }
 
+void Console::rp_specific_reboot() {
+    // Do a RP pico-specific software reset to force everything to reload
+    *((volatile uint32_t*)(PPB_BASE + 0x0ED0C)) = 0x5FA0004;
+}
+
 void Console::set_factory_defaults() { 
 
     Serial1.println();
@@ -442,21 +558,36 @@ void Console::set_factory_defaults() {
     // Band Tables
     // Initialized empty
     ps.add_key(KEY_BAND_INFO_TABLE, sizeof(Band_Info) * MAX_NUM_OF_BANDS);
+    // Preconfigure at least one band as a default
+    Band_Info *first_band = (Band_Info *) ps.get_value_pointer(KEY_BAND_INFO_TABLE);
+    first_band->lower_limit = 7128000;
+    first_band->upper_limit = 7297000;
+    strcpy(first_band->name, "40M");
+    first_band->flags |= BAND_FLAG_ACTIVE;
+
+    // Radio configuration
+    ps.add_key(KEY_RADIO_CONFIG, sizeof(Radio_Info));
+    // Preconfigure reference oscillator and if zero hz. frequency
+    Radio_Info *radio_info = (Radio_Info *) ps.get_value_pointer(KEY_RADIO_CONFIG);
+    radio_info->if_zero_hz_freq = 12288007;
+    radio_info->ref_clk_freq = 26000000;
+
+
+    // Channel info
+    ps.add_key(KEY_CHANNEL_INFO, sizeof(Channel_Info));
 
     // TCXO calibration
     ps.add_key(KEY_CALIB, sizeof(int32_t));
-    ps.write(KEY_CALIB, (int32_t) CONFIG_DEFAULT_REF_CLK_CAL);
+    ps.write(KEY_CALIB, (int32_t) -1000);
     // Initial frequency
     ps.add_key(KEY_INIT_FREQ, sizeof(uint32_t));
-    ps.write(KEY_INIT_FREQ, (uint32_t) CONFIG_DEFAULT_BAND_INITIAL_FREQUENCY_0);
+    ps.write(KEY_INIT_FREQ, (uint32_t) 7255000);
 
     // Write it all to the EEPROM
     ps.commit();
     Serial1.println("Restarting...");
     delay(1000);
-
-    // Do a RP pico-specific software reset to force everything to reload
-    *((volatile uint32_t*)(PPB_BASE + 0x0ED0C)) = 0x5FA0004;
+    this->rp_specific_reboot();
 }
 
 
@@ -704,7 +835,7 @@ bool Console::_parse_command(unsigned argc, const Command_Table_Entry_Type *top)
 							uint8_t a_type = cte->arguments[a_index];
 
 							switch(a_type) {
-								case AT_UINT: {
+								case AT_UINT: { // 32 bit unsigned integer
 									uint32_t val;
 									if(sscanf(this->_arg_list[arg],"%lu", &val) != 1) {
 										this->_error_code = CEC_PARAM_ERROR;
@@ -718,7 +849,7 @@ bool Console::_parse_command(unsigned argc, const Command_Table_Entry_Type *top)
 									break;
 								}
 
-								case AT_INT: {
+								case AT_INT: { // 32 bit Integer
 									int32_t val;
 									if(sscanf(this->_arg_list[arg],"%ld", &val) != 1) {
 										this->_error_code = CEC_PARAM_ERROR;
@@ -730,6 +861,11 @@ bool Console::_parse_command(unsigned argc, const Command_Table_Entry_Type *top)
 									this->_args[a_index].intg = val;
 									break;
 								}
+
+                                case AT_STR32: // 32 byte string 
+                                    this->_args[a_index].str32[31] = 0;
+                                    strncpy(this->_args[a_index].str32, this->_arg_list[arg], 31);
+                                    break;
 
 								default:
 									/* No more arguments to convert */
