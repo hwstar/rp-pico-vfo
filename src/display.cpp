@@ -58,11 +58,15 @@ uint8_t Display::get_current_view() {
     return this->_current_view;
 }
 
-void Display::update_freq(uint32_t hz){
+void Display::update_freq(uint32_t hz, int32_t display_offset_hz){
 
     char freq[12];
-    sprintf(freq, "%2lu.", hz / 1000000);
-    sprintf(freq + 3, "%06lu", hz % 1000000);
+
+    // If there is a a display offset for the band, add it in here
+    uint32_t display_freq_hz = hz + display_offset_hz;
+
+    sprintf(freq, "%2lu.", display_freq_hz / 1000000);
+    sprintf(freq + 3, "%06lu", display_freq_hz % 1000000);
 
     DisplayChars *vp = &this->_views[VIEW_NORMAL];
     memcpy(vp->lines[FREQ_LINE] + FREQ_OFFSET, freq, FREQ_LEN);

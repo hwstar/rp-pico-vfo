@@ -32,7 +32,7 @@ class Display {
     * Update frequency portion on display
     */
 
-    void update_freq(uint32_t hz);
+    void update_freq(uint32_t hz, int32_t display_offset_hz);
 
     /*
     * Update transmit status portion on display

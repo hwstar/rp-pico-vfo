@@ -115,19 +115,26 @@ void two_mS() {
         }
         if(!ps.validate_contents()) {
             // EEPROM invalid. Set factory defaults
+            Serial1.println("Error: Invalid EEPROM contents, reformatting to factory default");
             console.set_factory_defaults();
         }
 
 
 
-        // Initialize PLL 
-        // See config_default.h for constants 
+        // *** Initialize PLL ***
+        // Point to radio configuration data
         Radio_Info *radio_info = (Radio_Info *) ps.get_value_pointer(KEY_RADIO_CONFIG);
+        // Determine if we need to swap the local oscillators on TX
+        bool swap_lo_on_tx = !((radio_info->flags & RADIO_FLAG_BITX_MODE) > 0);
+        // Get the calibration value
         int32_t calibration_value;
         bool res;
         res = ps.read(KEY_CALIB, &calibration_value);
-        res = pll.begin(&I2C_int, radio_info->ref_clk_freq, radio_info->if_zero_hz_freq, 10000000, calibration_value);
+        // Configure the PLL
+        res = pll.begin(&I2C_int, radio_info->ref_clk_freq,
+            radio_info->if_zero_hz_freq, 10000000, calibration_value, swap_lo_on_tx);
         if(!res) {
+            // No I2C connectivity to the Si5351
             error_handler.post(ERROR_MISSING_SI5351);
             return;
         }

@@ -5,7 +5,7 @@
 #include "pll.h"
 
 
-bool Pll::begin(MbedI2C *i2c_bus, uint32_t ref_freq, uint32_t cf_zero_hz_freq, uint32_t initial_tune_freq, int32_t correction) {
+bool Pll::begin(MbedI2C *i2c_bus, uint32_t ref_freq, uint32_t cf_zero_hz_freq, uint32_t initial_tune_freq, int32_t correction, bool swap_lo_on_tx) {
     this->_i2c_bus = i2c_bus;
     this->_tx_state = false;
     this->_correction = correction;
@@ -14,6 +14,7 @@ bool Pll::begin(MbedI2C *i2c_bus, uint32_t ref_freq, uint32_t cf_zero_hz_freq, u
     this->_cf_zero_hz_freq = cf_zero_hz_freq;
     this->_usb_mode = false;
     this->_cal_mode = false;
+    this->_swap_lo_on_tx = swap_lo_on_tx;
 
     /* Create Si5351 object statically and then save a reference to it */
     static Si5351 _si5351_obj = Si5351(i2c_bus);
@@ -98,60 +99,83 @@ void Pll::_set_clock_freqs() {
 
     else {
         uint32_t lo_first, lo_second;
-        if(this->_tx_state) {
 
-            /*
-            * Transmit
-            * First lo is the balanced modulator, 
-            * Second lo is the transmit mixer to convert the IF to the desired TX frequency
-            */
-
-            lo_first = this->_cf_zero_hz_freq;
-            if(this->_usb_mode) {
+        if(this->_swap_lo_on_tx) { // Swap LO on TX
+            if(this->_tx_state) {
 
                 /*
-                * High side injection (inverts sideband)
+                * Transmit
+                * First lo is the balanced modulator, 
+                * Second lo is the transmit mixer to convert the IF to the desired TX frequency
                 */
 
-                lo_second = this->_tune_freq + this->_cf_zero_hz_freq;
+                lo_first = this->_cf_zero_hz_freq;
+                if(this->_usb_mode) {
 
+                    /*
+                    * High side injection (inverts sideband)
+                    */
+
+                    lo_second = this->_tune_freq + this->_cf_zero_hz_freq;
+
+                }
+                else {
+
+                    /* 
+                    * Low side injection
+                    */
+
+                    lo_second = this->_cf_zero_hz_freq - this->_tune_freq;
+                }
             }
             else {
 
-                /* 
-                * Low side injection
+                /*
+                * Receive
+                * First LO is used to convert the receive RF from the desired frequency to the IF frequency
+                * Second LO is the product detector.
                 */
 
-                lo_second = this->_cf_zero_hz_freq - this->_tune_freq;
+                lo_second = this->_cf_zero_hz_freq;
+                if(this->_usb_mode) {
+
+                    /*
+                    * High side injection (inverts sideband)
+                    */
+
+                    lo_first = this->_tune_freq + this->_cf_zero_hz_freq;
+                }
+                else {
+
+                    /* 
+                    * Low side injection
+                    */
+
+                lo_first = this->_cf_zero_hz_freq - this->_tune_freq;
+                }
             }
         }
-        else {
-
-            /*
-            * Receive
-            * First LO is used to convert the receive RF from the desired frequency to the IF frequency
-            * Second LO is the product detector.
-            */
-
-            lo_second = this->_cf_zero_hz_freq;
+        else { /* No LO swap on TX */
             if(this->_usb_mode) {
-
                 /*
                 * High side injection (inverts sideband)
                 */
 
                 lo_first = this->_tune_freq + this->_cf_zero_hz_freq;
+
             }
             else {
 
                 /* 
-                * Low side injection
+                * Low side injection (does not invert sideband)
                 */
 
-               lo_first = this->_cf_zero_hz_freq - this->_tune_freq;
+                lo_first = this->_cf_zero_hz_freq - this->_tune_freq;
             }
+            // Second LO is dedicated to product detector and balanced modulator service.
+            lo_second = this->_cf_zero_hz_freq;
         }
-        
+            
         /*
         * Set the local oscillator frequencies in the Si5351
         */
@@ -163,9 +187,6 @@ void Pll::_set_clock_freqs() {
         Serial.print("LO second: ");
         Serial.println(lo_second);
         */
-        
-
-
         this->_set_freq_hz(lo_first, SI5351_CLK0);
         this->_set_freq_hz(lo_second, SI5351_CLK2);
         

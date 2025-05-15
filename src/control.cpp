@@ -227,10 +227,12 @@ void Control::release() {
         error_handler.post(ERROR_NO_BANDS_ENABLED);
         return;
     }
-
+    // Select the correct band table
+   
 
     this->_step_size_index = CONFIG_DEFAULT_STEP_SIZE_INDEX;
-    this->_current_band = CONFIG_DEFAULT_INITIAL_BAND_INDEX;
+    this->_current_band = band;
+    band_info = band_info + band;
     this->_tune_freq_hz = ((band_info->upper_limit + band_info->lower_limit) / 2); // Set freq to band midpoint
     this->_tune_freq_hz = this->_tune_freq_hz - (this->_tune_freq_hz % 1000); // Select and even kHz boundary
    
@@ -238,7 +240,8 @@ void Control::release() {
     // Setup
    
     pll.set_freq(this->_tune_freq_hz);
-    display.update_freq(this->_tune_freq_hz);
+    int32_t display_freq_hz = band_info->freq_offset_display;
+    display.update_freq(this->_tune_freq_hz, display_freq_hz);
     display.update_tx(this->_is_transmitting, this->_tune_mode);
    
     bool mode = (band_info->flags & BAND_FLAG_MODE_USB) > 0;
@@ -363,7 +366,7 @@ void Control::_handle_normal_view(uint8_t event) {
             if(this->_tune_freq_hz + step_size <= band_info->upper_limit) {
                 /* Will still be in band, so increase tune freq by the step size and update everything */
                 this->_tune_freq_hz += step_size;
-                display.update_freq(this->_tune_freq_hz);
+                display.update_freq(this->_tune_freq_hz, band_info[this->_current_band].freq_offset_display);
                 pll.set_freq(this->_tune_freq_hz);
             }
 
@@ -374,7 +377,7 @@ void Control::_handle_normal_view(uint8_t event) {
             if(this->_tune_freq_hz - step_size >= band_info->lower_limit) {
                 /* Will still be in band, so decrease tune freq by the step size and update everything */
                 this->_tune_freq_hz -= step_size;
-                display.update_freq(this->_tune_freq_hz);
+                display.update_freq(this->_tune_freq_hz, band_info[this->_current_band].freq_offset_display);
                 pll.set_freq(this->_tune_freq_hz);
             }
             break;

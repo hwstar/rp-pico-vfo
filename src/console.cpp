@@ -50,6 +50,8 @@ const static char *error_strings[] = {
  static const uint8_t args_single_unsigned[] = {AT_UINT, AT_END};
  static const uint8_t args_double_unsigned[] = {AT_UINT, AT_UINT, AT_END};
  static const uint8_t args_unsigned_string[] = {AT_UINT, AT_STR32, AT_END};
+ static const uint8_t args_unsigned_int[] = {AT_UINT, AT_INT, AT_END};
+
 
  // Forward declarations for command handlers
  static bool cal_on(Holder_Type *vars, uint8_t *error_code);
@@ -69,6 +71,9 @@ const static char *error_strings[] = {
  static bool config_set_band_name(Holder_Type *vars, uint8_t *error_code);
  static bool config_set_radio_if(Holder_Type *vars, uint8_t *error_code);
  static bool config_set_radio_refosc(Holder_Type *vars, uint8_t *error_code);
+ static bool config_set_radio_bitx(Holder_Type *vars, uint8_t *error_code);
+ static bool config_set_radio_swap(Holder_Type *vars, uint8_t *error_code);
+ static bool config_set_band_display_offset(Holder_Type *vars, uint8_t *error_code);
 
  static bool config_eeprom_save(Holder_Type *vars, uint8_t *error_code);
  static bool reboot(Holder_Type *vars, uint8_t *error_code);
@@ -89,9 +94,17 @@ const static char *error_strings[] = {
 
  };
 
+ // Command: config set band display 
+ static const Command_Table_Entry_Type config_set_band_display[] {
+    { NULL, config_set_band_display_offset, args_unsigned_int, "offset"},
+    CTE_END
+
+ };
+
  // Set band configuration table
  static const Command_Table_Entry_Type config_set_band[] = {
     { NULL, config_set_band_disable, args_single_unsigned, "disable"},
+    { config_set_band_display, NULL, args_none, "display"},
     { NULL, config_set_band_enable, args_single_unsigned, "enable"},
     { NULL, config_set_band_name, args_unsigned_string, "name"},
     { NULL, config_set_band_start, args_double_unsigned, "start"},
@@ -102,6 +115,8 @@ const static char *error_strings[] = {
  static const Command_Table_Entry_Type config_set_radio[] = {
     {NULL, config_set_radio_if, args_single_unsigned, "if"},
     {NULL, config_set_radio_refosc, args_single_unsigned, "refosc"},
+    {NULL, config_set_radio_bitx, args_none, "bitx"},
+    {NULL, config_set_radio_swap, args_none, "swap"},
     CTE_END
 
 
@@ -167,9 +182,6 @@ static const Command_Table_Entry_Type info_get_radio[] = {
     CTE_END
  };
 
-/* 
-* Config commands 
-*/
 
  /*
  * Calibrate commands
@@ -251,6 +263,8 @@ static const Command_Table_Entry_Type info_get_radio[] = {
     Serial1.println(ws);
     snprintf(ws, 79, "%-32s : %-7lu","Band Stop", bi->upper_limit);
     Serial1.println(ws);
+    snprintf(ws, 79, "%-32s : %-7ld","Display Offset", bi->freq_offset_display);
+    Serial1.println(ws);
     return true;
  }
 
@@ -259,6 +273,8 @@ static const Command_Table_Entry_Type info_get_radio[] = {
     Radio_Info *ri = (Radio_Info *) ps.get_value_pointer(KEY_RADIO_CONFIG);
     ws[79] = 0;
     Serial1.println();
+    snprintf(ws, 79, "%-32s : %-5s", "LO BITx mode", bool_to_yes_no(ri->flags & RADIO_FLAG_BITX_MODE));
+    Serial1.println(ws);
     snprintf(ws, 79, "%-32s : %-7lu", "IF Zero Hz Frequency", ri->if_zero_hz_freq);
     Serial1.println(ws);
     snprintf(ws, 79, "%-32s : %-7lu", "Reference Clock Frequency", ri->ref_clk_freq);
@@ -404,6 +420,27 @@ static bool config_set_radio_refosc(Holder_Type *vars, uint8_t *error_code) {
 
 }
 
+static bool config_set_radio_bitx(Holder_Type *vars, uint8_t *error_code) {
+    // Local oscillator 1 and 2 are not swapped
+    Radio_Info *ri = (Radio_Info *) ps.get_value_pointer(KEY_RADIO_CONFIG);
+    ri->flags |= RADIO_FLAG_BITX_MODE;
+    // Flag that a write to the eeprom is required
+    ps.force_dirty();
+    return true;
+
+}
+
+static bool config_set_radio_swap(Holder_Type *vars, uint8_t *error_code) {
+     // Local oscillator 1 and 2 are swapped
+     Radio_Info *ri = (Radio_Info *) ps.get_value_pointer(KEY_RADIO_CONFIG);
+     ri->flags &= ~RADIO_FLAG_BITX_MODE;
+     // Flag that a write to the eeprom is required
+    ps.force_dirty();
+    return true;
+}
+
+
+
 
 static bool config_set_band_start(Holder_Type *vars, uint8_t *error_code) {
     uint32_t band = vars[0].uint;
@@ -435,10 +472,29 @@ static bool config_set_band_stop(Holder_Type *vars, uint8_t *error_code) {
     return true;
 }
 
+static bool config_set_band_display_offset(Holder_Type *vars, uint8_t *error_code) {
+    uint32_t band = vars[0].uint;
+    int32_t display_offset_hz = vars[1].intg;
+    if((display_offset_hz) < -2000  || (display_offset_hz > 2000)) {
+        return false;
+    }
+    if(!validate_band_number(band)) {
+        return false;
+    }
+    band--; // Change band number to to 0-7 range
+    Band_Info *bi = get_band_info_pointer(band);
+    // Set the display offset frequency
+    bi->freq_offset_display = display_offset_hz;
+    // Flag that a write to the eeprom is required
+    ps.force_dirty();
+    return true;
+}
+
 static bool config_set_band_disable(Holder_Type *vars, uint8_t *error_code) {
     uint32_t band = vars->uint;
-    if(!validate_band_number(band))
+    if(!validate_band_number(band)) {
         return false;
+    }
     band--;
 
     Band_Info *bi = get_band_info_pointer(band);

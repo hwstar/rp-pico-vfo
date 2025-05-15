@@ -4,7 +4,7 @@
 class Pll {
     public:
     /* Set up the PLL */
-    bool begin(MbedI2C *i2c_bus, uint32_t ref_freq, uint32_t cf_zero_hz_freq, uint32_t initial_tune_freq, int32_t correction);
+    bool begin(MbedI2C *i2c_bus, uint32_t ref_freq, uint32_t cf_zero_hz_freq, uint32_t initial_tune_freq, int32_t correction, bool swap_lo_on_tx = true);
     /* Get frequency pll is tuned to*/
     uint32_t get_freq();
     /* Set pll frequency */
@@ -29,6 +29,7 @@ class Pll {
     bool _tx_state;
     bool _usb_mode;
     bool _cal_mode;
+    bool _swap_lo_on_tx;
     int32_t _correction;
     uint32_t _cf_zero_hz_freq;
     uint32_t _ref_freq;
