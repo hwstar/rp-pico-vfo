@@ -50,7 +50,7 @@ void Menu::_reset() {
     this->_cur_level = this->_top_level; // Current level set to top
 }
 
-void Menu::begin(const menu_level *top,void (*drawer)(const char *line1, const char *line2), void (*exit_action)()) {
+void Menu::init(const menu_level *top,void (*drawer)(const char *line1, const char *line2), void (*exit_action)()) {
     this->_top_level = top; // Top level menu
     this->_drawer = drawer; // Drawing function
     this->_exit_action = exit_action; // The user supplied menu exit function

@@ -46,7 +46,7 @@ class Menu
     // Call at setup
     // Supply a drawing function
     // Optionally supply the exit action function.
-    void begin(const menu_level *top,void (*drawer)(const char *line1, const char *line2), void (*exit_action)() = NULL );
+    void init(const menu_level *top,void (*drawer)(const char *line1, const char *line2), void (*exit_action)() = NULL );
     // Show menu 
     // Call this to show top level menu
     void show(); 

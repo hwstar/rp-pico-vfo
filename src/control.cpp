@@ -55,9 +55,9 @@ const menu_level top_no_mode = {2,"*** Top Menu ***",{&item_top_agc, &item_top_c
 
 // Menu initialization
 
-void menu_init() {
+void menu_init(const menu_level *top) {
     // Called from main.cpp to initialize the menu object
-    menu.begin(&top_mode, draw_menu, at_menu_exit);
+    menu.init(top, draw_menu, at_menu_exit);
 }
 
 
@@ -353,6 +353,7 @@ void Control::_every_ms10() {
 void Control::_handle_normal_view(uint8_t event) {
     uint16_t step_size = this->_step_size_table[this->_step_size_index];
     Band_Info *band_info = (Band_Info *) ps.get_value_pointer(KEY_BAND_INFO_TABLE);
+    band_info+=this->_current_band; // Select the correct band table for the current band.
 
     switch(event) {
        
@@ -386,15 +387,19 @@ void Control::_handle_normal_view(uint8_t event) {
             display.update_tune_step_size(this->_step_size_table[this->_step_size_index]);
             break;
         
-        case ENCODER_KNOB_SWITCH_PRESSED_LONG: /* Long duration encoder knob press */
+        case ENCODER_KNOB_SWITCH_PRESSED_LONG: { /* Long duration encoder knob press */
+            
+            // Select modeless top menue if no mode switch flag is set
+            const menu_level *top = (band_info->flags & BAND_FLAG_NO_MODE_SWITCH) ? &top_no_mode : &top_mode; 
+            // Initialize and show menu
+            menu_init(top);
             display.clear_view(VIEW_MENU);
             display.set_current_view(VIEW_MENU);
             menu.show();
           
             break;
+        }
           
-
-
         default:
             break;
 

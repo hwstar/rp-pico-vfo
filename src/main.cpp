@@ -68,8 +68,6 @@ void setup() {
     eeprom.begin(&I2C_int, 0x50);
     // Initialize console port
     console.setup();
-    // Initialize menu
-    menu_init();
     // Initialize control
     control.begin();
 
