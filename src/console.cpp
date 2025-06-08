@@ -69,6 +69,14 @@ const static char *error_strings[] = {
  static bool config_set_band_stop(Holder_Type *vars, uint8_t *error_code);
  static bool config_set_band_stop(Holder_Type *vars, uint8_t *error_code);
  static bool config_set_band_name(Holder_Type *vars, uint8_t *error_code);
+ static bool config_set_band_lsb(Holder_Type *vars, uint8_t *error_code);
+ static bool config_set_band_usb(Holder_Type *vars, uint8_t *error_code);
+ static bool config_set_band_modeselect_enable(Holder_Type *vars, uint8_t *error_code);
+ static bool config_set_band_modeselect_disable(Holder_Type *vars, uint8_t *error_code);
+ static bool config_set_band_channelized_enable(Holder_Type *vars, uint8_t *error_code);
+ static bool config_set_band_channelized_disable(Holder_Type *vars, uint8_t *error_code);
+ static bool config_set_band_step_500(Holder_Type *vars, uint8_t *error_code);
+ static bool config_set_band_step_1000(Holder_Type *vars, uint8_t *error_code);
  static bool config_set_radio_if(Holder_Type *vars, uint8_t *error_code);
  static bool config_set_radio_refosc(Holder_Type *vars, uint8_t *error_code);
  static bool config_set_radio_bitx(Holder_Type *vars, uint8_t *error_code);
@@ -101,14 +109,44 @@ const static char *error_strings[] = {
 
  };
 
+ // Command: config set band channelized
+ static const Command_Table_Entry_Type config_set_band_channelized[] {
+    { NULL, config_set_band_channelized_enable, args_single_unsigned, "enable"},
+    { NULL, config_set_band_channelized_disable, args_single_unsigned, "disable"},
+    CTE_END
+
+ };
+
+ // Command: config set band modeselect
+ static const Command_Table_Entry_Type config_set_band_modeselect[] {
+    { NULL, config_set_band_modeselect_enable, args_single_unsigned, "enable"},
+    { NULL, config_set_band_modeselect_disable, args_single_unsigned, "disable"},
+    CTE_END
+
+ };
+
+ // Command: config set band step
+ static const Command_Table_Entry_Type config_set_band_step[] {
+    { NULL, config_set_band_step_500, args_single_unsigned, "500"},
+    { NULL, config_set_band_step_1000, args_single_unsigned, "1000"},
+    CTE_END
+
+ };
+
+
  // Set band configuration table
  static const Command_Table_Entry_Type config_set_band[] = {
+    {config_set_band_channelized, NULL, args_none, "channelized"},
     { NULL, config_set_band_disable, args_single_unsigned, "disable"},
     { config_set_band_display, NULL, args_none, "display"},
     { NULL, config_set_band_enable, args_single_unsigned, "enable"},
+    { NULL, config_set_band_lsb, args_single_unsigned, "lsb"},
+    { config_set_band_modeselect, NULL, args_none, "modeselect"},
     { NULL, config_set_band_name, args_unsigned_string, "name"},
     { NULL, config_set_band_start, args_double_unsigned, "start"},
     { NULL, config_set_band_stop, args_double_unsigned, "stop"},
+    { config_set_band_step, NULL, args_none, "step"},
+    { NULL, config_set_band_usb, args_single_unsigned, "usb"},
     CTE_END
  };
 
@@ -259,11 +297,19 @@ static const Command_Table_Entry_Type info_get_radio[] = {
     Serial1.println(ws);
     snprintf(ws, 79, "%-32s : %-7s","Band Enabled", bool_to_yes_no((bi->flags & BAND_FLAG_ACTIVE) != 0));
     Serial1.println(ws);
+    snprintf(ws, 79, "%-32s : %-7s","Mode Menu Selection Disabled", bool_to_yes_no((bi->flags & BAND_FLAG_NO_MODE_SWITCH) != 0));
+    Serial1.println(ws);
+    snprintf(ws, 79, "%-32s : %-7s","Start In Channelized Mode", bool_to_yes_no((bi->flags & BAND_FLAG_CHANNELIZED) != 0));
+    Serial1.println(ws);
+    snprintf(ws, 79, "%-32s : %-7s","Starting Mode", ((bi->flags & BAND_FLAG_MODE_USB) != 0) ? "USB" : "LSB");
+    Serial1.println(ws);
+    snprintf(ws, 79, "%-32s : %-7s","Tuning Step Size", ((bi->flags & BAND_VFO_STEP_500HZ) != 0) ? "500 Hz" : "1kHz");
+    Serial1.println(ws);
     snprintf(ws, 79, "%-32s : %-7lu","Band Start", bi->lower_limit);
     Serial1.println(ws);
     snprintf(ws, 79, "%-32s : %-7lu","Band Stop", bi->upper_limit);
     Serial1.println(ws);
-    snprintf(ws, 79, "%-32s : %-7ld","Display Offset", bi->freq_offset_display);
+    snprintf(ws, 79, "%-32s : %-7ld","Dial Frequency Offset", bi->freq_offset_display);
     Serial1.println(ws);
     return true;
  }
@@ -299,7 +345,7 @@ static const Command_Table_Entry_Type info_get_radio[] = {
                 return false;
         }
         else {
-            // Is a leaf in the tree
+            // Is a leaf in the tree{ NULL, config_set_band_display_offset, args_unsigned_int, "enable"},
             // Print command sequence
             Serial1.print(console.help_kw_stack_cat());
             // Print argument types
@@ -439,9 +485,6 @@ static bool config_set_radio_swap(Holder_Type *vars, uint8_t *error_code) {
     return true;
 }
 
-
-
-
 static bool config_set_band_start(Holder_Type *vars, uint8_t *error_code) {
     uint32_t band = vars[0].uint;
     uint32_t start_freq_hz = vars[1].uint;
@@ -455,6 +498,84 @@ static bool config_set_band_start(Holder_Type *vars, uint8_t *error_code) {
     // Flag that a write to the eeprom is required
     ps.force_dirty();
     return true;
+}
+
+
+static bool config_set_band_usb(Holder_Type *vars, uint8_t *error_code) {
+    uint32_t band = vars[0].uint;
+    Band_Info *bi = get_band_info_pointer(band - 1);
+    bi->flags |= BAND_FLAG_MODE_USB;
+    // Flag that a write to the eeprom is required
+    ps.force_dirty();
+    return true;
+}
+
+static bool config_set_band_lsb(Holder_Type *vars, uint8_t *error_code) {
+    uint32_t band = vars[0].uint;
+    Band_Info *bi = get_band_info_pointer(band - 1);
+    bi->flags &= ~BAND_FLAG_MODE_USB;
+    // Flag that a write to the eeprom is required
+    ps.force_dirty();
+    return true;
+
+}
+
+static bool config_set_band_modeselect_enable(Holder_Type *vars, uint8_t *error_code) {
+    uint32_t band = vars[0].uint;
+    Band_Info *bi = get_band_info_pointer(band - 1);
+    bi->flags &= ~BAND_FLAG_NO_MODE_SWITCH;
+    // Flag that a write to the eeprom is required
+    ps.force_dirty();
+    return true;
+}
+
+static bool config_set_band_modeselect_disable(Holder_Type *vars, uint8_t *error_code) {
+    uint32_t band = vars[0].uint;
+    Band_Info *bi = get_band_info_pointer(band - 1);
+    bi->flags |= BAND_FLAG_NO_MODE_SWITCH;
+    // Flag that a write to the eeprom is required
+    ps.force_dirty();
+    return true;
+
+}
+
+static bool config_set_band_channelized_enable(Holder_Type *vars, uint8_t *error_code) {
+    uint32_t band = vars[0].uint;
+    Band_Info *bi = get_band_info_pointer(band - 1);
+    bi->flags |= BAND_FLAG_CHANNELIZED;
+    // Flag that a write to the eeprom is required
+    ps.force_dirty();
+    return true;
+}
+
+static bool config_set_band_channelized_disable(Holder_Type *vars, uint8_t *error_code) {
+    uint32_t band = vars[0].uint;
+    Band_Info *bi = get_band_info_pointer(band - 1);
+    bi->flags &= ~BAND_FLAG_CHANNELIZED;
+    // Flag that a write to the eeprom is required
+    ps.force_dirty();
+    return true;
+
+}
+
+static bool config_set_band_step_500(Holder_Type *vars, uint8_t *error_code) {
+    uint32_t band = vars[0].uint;
+    Band_Info *bi = get_band_info_pointer(band - 1);
+    bi->flags |= BAND_VFO_STEP_500HZ;
+    // Flag that a write to the eeprom is required
+    ps.force_dirty();
+    return true;
+
+}
+
+static bool config_set_band_step_1000(Holder_Type *vars, uint8_t *error_code) {
+    uint32_t band = vars[0].uint;
+    Band_Info *bi = get_band_info_pointer(band - 1);
+    bi->flags &= ~BAND_VFO_STEP_500HZ;
+    // Flag that a write to the eeprom is required
+    ps.force_dirty();
+    return true;
+
 }
 
 static bool config_set_band_stop(Holder_Type *vars, uint8_t *error_code) {
@@ -613,7 +734,7 @@ void Console::set_factory_defaults() {
 
     // Band Tables
     // Initialized empty
-    ps.add_key(KEY_BAND_INFO_TABLE, sizeof(Band_Info) * MAX_NUM_OF_BANDS);
+    ps.add_key(KEY_BAND_INFO_TABLE, sizeof(Band_Info) * CONFIG_MAX_NUM_OF_BANDS);
     // Preconfigure at least one band as a default
     Band_Info *first_band = (Band_Info *) ps.get_value_pointer(KEY_BAND_INFO_TABLE);
     first_band->lower_limit = 7128000;

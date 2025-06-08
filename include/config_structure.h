@@ -1,16 +1,18 @@
 #pragma once
 #include <Arduino.h>
-#define MAX_NUM_OF_BANDS 8
+#include "config_default.h"
 
-#define BAND_FLAG_ACTIVE 1
-#define BAND_FLAG_CHANNELIZED_ONLY 2
-#define BAND_FLAG_MODE_USB 4
-#define BAND_FLAG_NO_MODE_SWITCH 8
 
-#define RADIO_FLAG_BITX_MODE 1
 
-#define MAX_NUM_CHANNELS 32
-#define CHANNEL_NAME_SIZE 8
+// Band feature enable/disable flags
+#define BAND_FLAG_ACTIVE 1 // Indicate that the band selection is active
+#define BAND_FLAG_CHANNELIZED 2 // Use channels by default on this band
+#define BAND_FLAG_MODE_USB 4 // Use USB by default on this band
+#define BAND_FLAG_NO_MODE_SWITCH 8 // Don't allow the user to select USB or LSB (e.g. for 60 meters)
+#define BAND_VFO_STEP_500HZ 0x10 // Step in 500 Hz increments when true, otherwise 1kHz
+
+// Radio info enable/disable mode
+#define RADIO_FLAG_BITX_MODE 1 // If set, do not swap LO and BFO on TX
 
 typedef struct Band_Info {
     // Must be 64 bytes
@@ -18,7 +20,7 @@ typedef struct Band_Info {
     uint32_t flags; // Band feature enable/disable flags
     uint32_t lower_limit; // Lower frequency limit for band in Hz
     uint32_t upper_limit; // Upper frequency limit for band in Hz
-    int32_t txgain; // TX gain (rederved for future use in multiband radios)
+    int32_t txgain; // TX gain (reserved for future use in multiband radios)
     uint8_t band_control_bits[4]; // Band control bits for I2C expanders (reserved for future use) 
     int32_t freq_offset_display; // The amount to offset the frequency shown on the display (for showing channel center on 60 meters)
     uint8_t pad[32];
@@ -38,7 +40,7 @@ static_assert(sizeof(Radio_Info) == 64, "Radio_Info Data structure doesn't match
 typedef struct Channel {
     uint32_t freq; // Frequency for of the channel
     uint32_t flags; // Channel feature flags
-    uint8_t name[CHANNEL_NAME_SIZE]; // Channel Name
+    uint8_t name[CONFIG_CHANNEL_NAME_SIZE]; // Channel Name
     uint8_t pad[8];
 } Channel;
 
@@ -46,7 +48,7 @@ static_assert(sizeof(Channel) == 24, "Channel Data structure doesn't match page 
 
 typedef struct Channel_Info {
     uint32_t channel_enables;
-    Channel channel[MAX_NUM_CHANNELS];
+    Channel channel[CONFIG_MAX_NUM_CHANNELS];
 } Channel_Info;
 
 static_assert(sizeof(Channel_Info) == 772, "Channel_Info Data structure doesn't match page size");

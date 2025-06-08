@@ -44,16 +44,12 @@ void draw_menu(const char *line1, const char *line2);
 void at_menu_exit();
 
 // Menu system data structures
-#ifdef CONFIG_ENABLE_MODE_SWITCHING
+
 const menu_item item_top_mode = {"MODE", MENU_ITEM_TYPE_ACTION, NULL, menu_item_mode_on_entry, menu_item_mode_action, menu_item_mode_on_exit};
-#endif
 const menu_item item_top_cal = {"CAL", MENU_ITEM_TYPE_ACTION, NULL, menu_item_cal_on_entry, menu_item_cal_action, menu_item_cal_on_exit};
 const menu_item item_top_agc = {"AGC", MENU_ITEM_TYPE_ACTION, NULL, menu_item_agc_on_entry, menu_item_agc_action, menu_item_agc_on_exit};
-#ifdef CONFIG_ENABLE_MODE_SWITCHING
-const menu_level top = {3,"*** Top Menu ***",{&item_top_mode, &item_top_agc, &item_top_cal}};
-#else
-const menu_level top = {2,"*** Top Menu ***",{&item_top_agc, &top_item_cal}};
-#endif
+const menu_level top_mode = {3,"*** Top Menu ***",{&item_top_mode, &item_top_agc, &item_top_cal}};
+const menu_level top_no_mode = {2,"*** Top Menu ***",{&item_top_agc, &item_top_cal}};
 
 
 
@@ -61,14 +57,11 @@ const menu_level top = {2,"*** Top Menu ***",{&item_top_agc, &top_item_cal}};
 
 void menu_init() {
     // Called from main.cpp to initialize the menu object
-    menu.begin(&top, draw_menu, at_menu_exit);
+    menu.begin(&top_mode, draw_menu, at_menu_exit);
 }
 
 
 // Handler functions for menu system
-
-#ifdef CONFIG_ENABLE_MODE_SWITCHING
-
 void menu_item_mode_on_entry() {
     // Called when mode is selected by the user
     // Show mode setting
@@ -91,8 +84,6 @@ bool menu_item_mode_on_exit(bool confirm) {
     // Called when the user selects a value for mode, or aborts
     return true;
 }
-
-#endif
 
 void menu_item_agc_on_entry() {
     // Called when agc is selected by the user
@@ -218,21 +209,25 @@ void Control::release() {
     Band_Info *band_info = (Band_Info *) ps.get_value_pointer(KEY_BAND_INFO_TABLE);
     
     // Find first enabled band
-    for(band = 0; band < MAX_NUM_OF_BANDS; band++) {
+    for(band = 0; band < CONFIG_MAX_NUM_OF_BANDS; band++) {
         if(band_info->flags & BAND_FLAG_ACTIVE) {
             break;
         }
     }
-    if(band == MAX_NUM_OF_BANDS) {
+    if(band == CONFIG_CHANNEL_NAME_SIZE) {
         error_handler.post(ERROR_NO_BANDS_ENABLED);
         return;
     }
     // Select the correct band table
    
 
-    this->_step_size_index = CONFIG_DEFAULT_STEP_SIZE_INDEX;
+   
     this->_current_band = band;
     band_info = band_info + band;
+    this->_step_size_index = (band_info->flags & BAND_VFO_STEP_500HZ) ? 2 : 3;
+
+
+
     this->_tune_freq_hz = ((band_info->upper_limit + band_info->lower_limit) / 2); // Set freq to band midpoint
     this->_tune_freq_hz = this->_tune_freq_hz - (this->_tune_freq_hz % 1000); // Select and even kHz boundary
    

@@ -27,7 +27,7 @@ class Control {
     void _handle_normal_view(uint8_t event);
     void _handle_menu_view(uint8_t event);
 
-    Band_Info _band_info_table[MAX_NUM_OF_BANDS];
+    Band_Info _band_info_table[CONFIG_MAX_NUM_OF_BANDS];
     const uint16_t _step_size_table[NUMBER_OF_STEP_SIZES] = {10, 100, 500, 1000, 10000};
     uint32_t _tune_freq_hz;
     uint16_t _tx_timer;
