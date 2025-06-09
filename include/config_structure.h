@@ -47,7 +47,7 @@ typedef struct Channel {
 static_assert(sizeof(Channel) == 24, "Channel Data structure doesn't match page size");
 
 typedef struct Channel_Info {
-    uint32_t channel_enables;
+    uint8_t pad[4];
     Channel channel[CONFIG_MAX_NUM_CHANNELS];
 } Channel_Info;
 

@@ -34,7 +34,7 @@ const static char *error_strings[] = {
     "Parameter error",
     "Table error",
     "Setup error",
-    "",
+    "Validation Error",
     "",
     "",
     "",
@@ -62,6 +62,7 @@ const static char *error_strings[] = {
  static bool info_get_eeprom_layout(Holder_Type *vars, uint8_t *error_code);
  static bool info_get_band(Holder_Type *vars, uint8_t *error_code);
  static bool info_get_radio_config (Holder_Type *vars, uint8_t *error_code);
+ static bool info_get_channels(Holder_Type *vars, uint8_t *error_code);
  static bool print_help(Holder_Type *vars, uint8_t *error_code);
  static bool config_set_band_disable(Holder_Type *vars, uint8_t *error_code);
  static bool config_set_band_enable(Holder_Type *vars, uint8_t *error_code);
@@ -77,6 +78,9 @@ const static char *error_strings[] = {
  static bool config_set_band_channelized_disable(Holder_Type *vars, uint8_t *error_code);
  static bool config_set_band_step_500(Holder_Type *vars, uint8_t *error_code);
  static bool config_set_band_step_1000(Holder_Type *vars, uint8_t *error_code);
+ static bool config_set_channel_frequency(Holder_Type *vars, uint8_t *error_code);
+ static bool config_set_channel_name(Holder_Type *vars, uint8_t *error_code);
+
  static bool config_set_radio_if(Holder_Type *vars, uint8_t *error_code);
  static bool config_set_radio_refosc(Holder_Type *vars, uint8_t *error_code);
  static bool config_set_radio_bitx(Holder_Type *vars, uint8_t *error_code);
@@ -156,14 +160,20 @@ const static char *error_strings[] = {
     {NULL, config_set_radio_bitx, args_none, "bitx"},
     {NULL, config_set_radio_swap, args_none, "swap"},
     CTE_END
-
-
  };
+
+ static const Command_Table_Entry_Type config_set_channel[] = {
+    {NULL, config_set_channel_frequency, args_double_unsigned, "frequency"},
+    {NULL, config_set_channel_name, args_unsigned_string, "name"},
+    CTE_END
+ };
+
 
 
  // Configuration set table
  static const Command_Table_Entry_Type config_set[] = {
     {config_set_band, NULL, args_none, "band"},
+    {config_set_channel, NULL, args_none, "channel"},
     {config_set_factory, NULL, args_single_int, "factory"},
     {config_set_radio, NULL, args_single_int, "radio"},
     
@@ -198,9 +208,10 @@ static const Command_Table_Entry_Type info_get_radio[] = {
 
  // Info get table
  static const Command_Table_Entry_Type info_get[] = {
-    {info_get_radio, NULL, args_none, "radio"},
-    {info_get_eeprom, NULL, args_none, "eeprom"},
     {NULL, info_get_band, args_single_unsigned, "band"},
+    {NULL, info_get_channels, args_none, "channels"},
+    {info_get_eeprom, NULL, args_none, "eeprom"},
+    {info_get_radio, NULL, args_none, "radio"},
     CTE_END
  };
 
@@ -271,11 +282,15 @@ static const Command_Table_Entry_Type info_get_radio[] = {
     return true;
  }
 
- static Band_Info *get_band_info_pointer(uint32_t band) {
+static Band_Info *get_band_info_pointer(uint32_t band) {
     return ((Band_Info *) ps.get_value_pointer(KEY_BAND_INFO_TABLE)) + band;
 }
 
- static const char *bool_to_yes_no(bool state) {
+static Channel *get_channel_pointer(uint32_t channel) {
+    return (((Channel_Info *) ps.get_value_pointer(KEY_CHANNEL_INFO))->channel+channel);
+}
+
+static const char *bool_to_yes_no(bool state) {
     return state ? "YES" : "NO";
 }
 
@@ -303,13 +318,13 @@ static const Command_Table_Entry_Type info_get_radio[] = {
     Serial1.println(ws);
     snprintf(ws, 79, "%-32s : %-7s","Starting Mode", ((bi->flags & BAND_FLAG_MODE_USB) != 0) ? "USB" : "LSB");
     Serial1.println(ws);
-    snprintf(ws, 79, "%-32s : %-7s","Tuning Step Size", ((bi->flags & BAND_VFO_STEP_500HZ) != 0) ? "500 Hz" : "1kHz");
+    snprintf(ws, 79, "%-32s : %-7s","Tuning Step Size (Hz)", ((bi->flags & BAND_VFO_STEP_500HZ) != 0) ? "500" : "1000");
     Serial1.println(ws);
-    snprintf(ws, 79, "%-32s : %-7lu","Band Start", bi->lower_limit);
+    snprintf(ws, 79, "%-32s : %-7lu","Band Start (Hz)", bi->lower_limit);
     Serial1.println(ws);
-    snprintf(ws, 79, "%-32s : %-7lu","Band Stop", bi->upper_limit);
+    snprintf(ws, 79, "%-32s : %-7lu","Band Stop (Hz)", bi->upper_limit);
     Serial1.println(ws);
-    snprintf(ws, 79, "%-32s : %-7ld","Dial Frequency Offset", bi->freq_offset_display);
+    snprintf(ws, 79, "%-32s : %-7ld","Dial Frequency Offset (Hz)", bi->freq_offset_display);
     Serial1.println(ws);
     return true;
  }
@@ -321,14 +336,29 @@ static const Command_Table_Entry_Type info_get_radio[] = {
     Serial1.println();
     snprintf(ws, 79, "%-32s : %-5s", "LO BITx mode", bool_to_yes_no(ri->flags & RADIO_FLAG_BITX_MODE));
     Serial1.println(ws);
-    snprintf(ws, 79, "%-32s : %-7lu", "IF Zero Hz Frequency", ri->if_zero_hz_freq);
+    snprintf(ws, 79, "%-32s : %-7lu", "Carrier Frequency (Hz)", ri->if_zero_hz_freq);
     Serial1.println(ws);
-    snprintf(ws, 79, "%-32s : %-7lu", "Reference Clock Frequency", ri->ref_clk_freq);
+    snprintf(ws, 79, "%-32s : %-7lu", "Reference Clock Frequency (Hz)", ri->ref_clk_freq);
     Serial1.println(ws);
     return true;
  }
 
+static bool info_get_channels(Holder_Type *vars, uint8_t *error_code) {
+    uint32_t i;
+    char ws[80];
 
+    Serial1.println();
+    Serial1.println("No.  : Name    : Freq (Hz)");
+    for(i = 0; i < CONFIG_MAX_NUM_CHANNELS; i++) {
+        Channel *c = get_channel_pointer(i);
+        if(c->freq) {
+            snprintf(ws, 79, "%-4lu : %-7s : %-7lu", i + 1, c->name, c->freq);
+            Serial1.println(ws);
+        }
+
+    }
+    return true;
+}
 
  static bool print_help_recursive(const Command_Table_Entry_Type * cur_command_table) {
     // Sanity check
@@ -637,6 +667,47 @@ static bool config_set_band_enable(Holder_Type *vars, uint8_t *error_code){
     bi->flags |= BAND_FLAG_ACTIVE;
     ps.force_dirty();
     
+    return true;
+}
+
+static bool config_set_channel_frequency(Holder_Type *vars, uint8_t *error_code) {
+    uint32_t channel = vars[0].uint;
+    uint32_t frequency = vars[1].uint;
+
+    // Validation
+    if((channel == 0) || (channel > CONFIG_MAX_NUM_CHANNELS)) {
+        return false;
+    }
+    // Note: entering a frequency of 0 Hz disables the channel
+    if((frequency > 0) && ((frequency < 1800000) || (frequency > 29700000))) {
+        return false;
+    }
+
+    // Point to channel info
+    Channel *c = get_channel_pointer(channel - 1);
+
+    c->freq = frequency;
+    ps.force_dirty();
+    
+    return true;
+}
+
+static bool config_set_channel_name(Holder_Type *vars, uint8_t *error_code) {
+   uint32_t channel = vars[0].uint;
+   char *channel_name =  vars[1].str32;
+
+    // Validation
+    if((channel == 0) || (channel > CONFIG_MAX_NUM_CHANNELS)) {
+        return false;
+    }
+
+
+    // Point to channel info
+    Channel *c = get_channel_pointer(channel - 1);
+    memcpy(c->name, channel_name, CONFIG_CHANNEL_NAME_SIZE);
+    c->name[7] = 0;
+    ps.force_dirty();
+
     return true;
 }
 
@@ -1064,6 +1135,9 @@ bool Console::_parse_command(unsigned argc, const Command_Table_Entry_Type *top)
 						/* Execute command */
 						if(cte->command) {
 							res = (*cte->command)(this->_args, &this->_error_code);
+                            if(!res) {
+                                this->_error_code = CEC_VALIDATION_ERROR;
+                            }
 						}
 						else {
 							this->_error_code = CEC_TABLE_ERROR;

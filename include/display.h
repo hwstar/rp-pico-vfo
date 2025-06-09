@@ -29,11 +29,11 @@ class Display {
     uint8_t get_current_view();
 
     /*
-    * Update frequency portion on display
+    * Update frequency/channel portion on display
     */
 
     void update_freq(uint32_t hz, int32_t display_offset_hz);
-
+    void update_freq(char *channel);
     /*
     * Update transmit status portion on display
     */

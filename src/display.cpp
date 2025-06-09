@@ -74,6 +74,12 @@ void Display::update_freq(uint32_t hz, int32_t display_offset_hz){
 
 }
 
+void Display::update_freq(char *channel) {
+    DisplayChars *vp = &this->_views[VIEW_NORMAL];
+    memcpy(vp->lines[FREQ_LINE] + FREQ_OFFSET, channel, 7);
+    vp->dirty = true;
+}
+
 void Display::update_sideband(bool sideband){
     DisplayChars *vp = &this->_views[VIEW_NORMAL];
     memcpy(vp->lines[SIDEBAND_LINE] + SIDEBAND_OFFSET, sideband ? "USB" : "LSB", SIDEBAND_LEN);
