@@ -11,22 +11,22 @@ void Error_Handler::post(uint32_t error_code) {
     switch(error_code) {
         case ERROR_NO_BANDS_ENABLED:
             this->_hard_error = true;
-            display.printf(1, 0, 14, "NO BAND ENA.");
+            display.printf(1, 0, 12, "NO BAND ENA.");
             break;
 
         case ERROR_MISSING_SI5351:
             this->_hard_error = true;
-            display.printf(1, 0, 14, "NO SI5351");
+            display.printf(1, 0, 9, "NO SI5351");
             break;
 
         case ERROR_MISSING_EEPROM:
             this->_hard_error = true;
-            display.printf(1, 0, 14, "NO EEPROM");
+            display.printf(1, 0, 9, "NO EEPROM");
             break;
         
         default:
             this->_hard_error = true;
-            display.printf(1, 0, 14, "UNHANDLED ERR");
+            display.printf(1, 0, 13, "UNHANDLED ERR");
             break;
 
     }
